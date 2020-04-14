@@ -1,0 +1,20 @@
+﻿<Window x:Class="FileManagerForOS.CreationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FileManagerForOS"
+        mc:Ignorable="d"
+        Title="Creation" Height="140" Width="340" ResizeMode="NoResize">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="59*"/>
+            <ColumnDefinition Width="259*"/>
+        </Grid.ColumnDefinitions>
+        <Label x:Name="lblName"  Content="Введите имя" Margin="4,10,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2"/>
+        <TextBox x:Name="txtBoxNameFile" Height="23" Margin="10,36,10,0" TextWrapping="Wrap"  VerticalAlignment="Top" Grid.ColumnSpan="2"/>
+        <Button Content="Cancel" Margin="0,0,10,10" Click="ButtonCancel_Click" Grid.Column="1" Height="20" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="74"/>
+        <Button Content="Ok" HorizontalAlignment="Right" Margin="0,0,89,10" VerticalAlignment="Bottom" Width="74" Click="ButtonOk_Click" Grid.Column="1"/>
+
+    </Grid>
+</Window>

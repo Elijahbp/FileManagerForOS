@@ -29,13 +29,11 @@ namespace FileManagerForOS
         /*TODO
          * ПО необходимости из имеющегося:
          * 1) Исправить ошибку сокрытия/открытия файлов
-         * 2) Прикрутить хот-кеи?
          * 3) Сделать отображение в левой части окна типа "дерево"
          *  3.1) К пунктам меню добавить контекстное меню 
-         * 4) Сделать окно (или в рамках одной формы), в котором может происходить ихменеие наименования файлов
-         * 5) Сделать корректное получение и отображение метрик
-         * 6) Поправить анимацию нажатия на иконки. Если было событие нажатие на пустую часть поля, при том что было предварительно выбрана иконка - обнулить значение выбранной иконки
-         * 7) Добавить ползунок на основном поле отображения 
+         * 4) Сделать окно (или в рамках одной формы), в котором может производить изменение наименования файлов
+         * 5) Сделать корректное получение и отображение метрик ПК
+         * 7) Добавить ползунок на основном поле отображения -???
          * 
          * По заданию из оставшегося:
          * 1) Добавить пункт меню "О Программе"
@@ -75,10 +73,10 @@ namespace FileManagerForOS
         private void Window_Initialized(object sender, EventArgs e)
         {
             lblNamePC.Content = System.Environment.MachineName;
-            lblInfoPath.Content = System.Environment.WorkingSet;
-
+            
             //Получение корня, где лежит файловый менеджер
             main_path = Environment.CurrentDirectory;
+            txtBoxPath.Text = main_path;
             baseInit();
             getViewByPath(main_path);
 
@@ -94,7 +92,7 @@ namespace FileManagerForOS
 
         private void KillingBase (){
             Directory.Delete(main_path + "\\System",true);
-            Directory.Delete(main_path + "\\MyDocuments", true);
+            Directory.Delete(main_path + "\\Мои документы", true);
         }
 
         #region логика работы с файлами/папками
@@ -108,7 +106,7 @@ namespace FileManagerForOS
         {
             MainSpace.Children.Clear();
             selectedFolder = new DirectoryInfo(path);
-            lblInfoPath.Content = path;
+            txtBoxPath.Text = path;
             FileInfo[] filesInfo = selectedFolder.GetFiles();
             DirectoryInfo[] directoryInfos = selectedFolder.GetDirectories();
             foreach (DirectoryInfo directoryInfo in directoryInfos)
@@ -129,6 +127,7 @@ namespace FileManagerForOS
                 Height = 100,
                 Margin = new Thickness(10),
                 VerticalContentAlignment = VerticalAlignment.Bottom,
+                
             };
             if (!info.Extension.Equals(""))
             {
@@ -193,6 +192,7 @@ namespace FileManagerForOS
             return shortcut;
         }
 
+       
         //Изменить название файла
         private void RenameFile(object sender, RoutedEventArgs e)
         {
@@ -307,37 +307,74 @@ namespace FileManagerForOS
 
         private void Select_Icon(object sender, RoutedEventArgs e)
         {
-            if (selectedIcon == null)
+            string typeSender = sender.GetType().Name;
+            if (e.Source.GetType().Name.Equals("Label") && typeSender.Equals("Label"))
             {
-                selectedIcon = (Label)sender;
-                selectedIcon.Background = selectedIconStyle;
+                if (selectedIcon == null)
+                {
+                    selectedIcon = (Label)sender;
+                    selectedIcon.Background = selectedIconStyle;
+                }
+                else
+                {
+                    string type = ((string[])selectedIcon.Tag)[0];
+                    if (type.Equals(TYPE_FILE))
+                    {
+                        selectedIcon.Background = unselectedIconStyleFile;
+                    }
+                    else if (type.Equals(TYPE_DIRECTORY))
+                    {
+                        selectedIcon.Background = unselectedIconStyleFolder;
+                    }
+                    selectedIcon = (Label)sender;
+                    selectedIcon.Background = selectedIconStyle;
+                }
             }
-            else
+            else if (e.Source.GetType().Name.Equals("WrapPanel"))
             {
-                string type = ((string[])selectedIcon.Tag)[0];
-                if (type.Equals(TYPE_FILE))
+                if (selectedIcon != null)
                 {
-                    selectedIcon.Background = unselectedIconStyleFile;
+                    string type = ((string[])selectedIcon.Tag)[0];
+                    if (type.Equals(TYPE_FILE))
+                    {
+                        selectedIcon.Background = unselectedIconStyleFile;
+                    }
+                    else if (type.Equals(TYPE_DIRECTORY))
+                    {
+                        selectedIcon.Background = unselectedIconStyleFolder;
+                    }
+                    selectedIcon = null;
+                    
                 }
-                else if (type.Equals(TYPE_DIRECTORY))
-                {
-                    selectedIcon.Background = unselectedIconStyleFolder;
-                }
-                selectedIcon = (Label)sender;
-                selectedIcon.Background = selectedIconStyle;
             }
+            
         }
 
-        //Дореализовать
         private void MenuItem_Click_CreateNewFile(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            CreationWindow creationWindow = new CreationWindow(CreationWindow.TYPE_FILE);
+            creationWindow.Owner = this;
+            creationWindow.ShowDialog();
+            string name_file = creationWindow.txtBoxNameFile.Text;
+            if (name_file != "")
+            {
+                File.Create(selectedFolder.FullName + "\\" + name_file + ".txt");
+                refreshView();
+            }
+                
         }
 
-        //Дореализовать
         private void MenuItem_Click_CreateNewFolder(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            CreationWindow creationWindow = new CreationWindow(CreationWindow.TYPE_FOLDER);
+            creationWindow.Owner = this;
+            creationWindow.ShowDialog();
+            string name_folder = creationWindow.txtBoxNameFile.Text;
+            if (name_folder !="")
+            {
+                Directory.CreateDirectory(selectedFolder.FullName + "\\" + name_folder);
+                refreshView();
+            }
         }
 
         private void MenuItem_Click_RefreshFile(object sender, RoutedEventArgs e)
@@ -360,6 +397,15 @@ namespace FileManagerForOS
             
         }
 
+        private void txtBoxPath_KeyDownEnterPath(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                getViewByPath(txtBoxPath.Text);
+                txtBoxPath.IsReadOnly = true;
+            }
+        }
+
         private void back_view(string path)
         {
             if (selectedFolder.FullName != main_path)
@@ -372,6 +418,8 @@ namespace FileManagerForOS
         {
             KillingBase();
         }
+
+        
     }
 
     #endregion
