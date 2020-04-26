@@ -46,7 +46,7 @@
     
     mimetype: application/x-microsoft.net.object.binary.base64
     value   : The object must be serialized with 
-            : System.Serialization.Formatters.Binary.BinaryFormatter
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
             : and then encoded with base64 encoding.
     
     mimetype: application/x-microsoft.net.object.soap.base64
@@ -60,6 +60,7 @@
             : and then encoded with base64 encoding.
     -->
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
       <xsd:complexType>
         <xsd:choice maxOccurs="unbounded">
@@ -68,9 +69,10 @@
               <xsd:sequence>
                 <xsd:element name="value" type="xsd:string" minOccurs="0" />
               </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" />
+              <xsd:attribute name="name" use="required" type="xsd:string" />
               <xsd:attribute name="type" type="xsd:string" />
               <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
             </xsd:complexType>
           </xsd:element>
           <xsd:element name="assembly">
@@ -85,9 +87,10 @@
                 <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
                 <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
               </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
               <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
               <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
             </xsd:complexType>
           </xsd:element>
           <xsd:element name="resheader">
@@ -109,9 +112,31 @@
     <value>2.0</value>
   </resheader>
   <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="About" xml:space="preserve">
+    <value>Cоздатель: Бучнев Илья Павлович ИВТм-91</value>
+  </data>
+  <data name="Reference" xml:space="preserve">
+    <value>Во многом файловый менеджер повторяет привычную функциональность стандартного файлового менеджера Windows.
+
+Пользователю предоставляется рабочее пространство, на котором отоброжается содержимое папки в виде "квадратиков" - иконок, при двойном нажатии на которые будет происходить действие открытия файла,
+или открытия папки. В последнем случае, произойдет получение содержимого данной папки, и отрисовка новых иконок.
+
+При нажатии на правую клавишу мыши по рабочему пространству будет предложен след. список функций:
+	1) Создать новую папку - Происходит вызов формы, в которой указывается имя создаваемой папки
+	2) Создать новый файл - Происходит вызов формы, в которой указывается имя создаваемого файла
+	3) Обновить - перерисовывает содержимое выбранной папки
+	4) Вставить - В случае, если был выбран файл/папка на копирование/вырезание, дает возможность выбора данного меню и вставки в выбранную папку
+	5) Показать(скрыть) скрытые(скрываемые) файлы</value>
+  </data>
+  <data name="TYPE_DIRECTORY" xml:space="preserve">
+    <value>DirectoryInfo</value>
+  </data>
+  <data name="TYPE_FILE" xml:space="preserve">
+    <value>FileInfo</value>
+  </data>
 </root>

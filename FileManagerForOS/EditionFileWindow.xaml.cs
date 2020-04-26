@@ -17,23 +17,39 @@ namespace FileManagerForOS
     /// <summary>
     /// Логика взаимодействия для Window1.xaml
     /// </summary>
-    public partial class CreationWindow : Window
+    public partial class EditionWindow : Window
     {
 
-        public const int TYPE_FOLDER = 0;
-        public const int TYPE_FILE = 1;
-
-        public CreationWindow(int type)
+        
+        
+        public EditionWindow(string type, bool rename)
         {
-
             InitializeComponent();
-            if (type == TYPE_FOLDER)
+            if (!rename)
             {
-                lblName.Content += " создаваемой папки";
-            }else if (type == TYPE_FILE)
-            {
-                lblName.Content += " создаваемого файла txt";
+                if (type == Properties.Resources.TYPE_DIRECTORY)
+                {
+                    lblName.Content += " создаваемой папки";
+                }
+                else if (type == Properties.Resources.TYPE_FILE)
+                {
+                    lblName.Content += " создаваемого файла txt";
+                }
             }
+            else
+            {
+                if (type == Properties.Resources.TYPE_DIRECTORY)
+                {
+                    lblName.Content = "Введите новое имя папки";
+                }
+                else if (type == Properties.Resources.TYPE_FILE)
+                {
+                    lblName.Content = "Введите новое имя файла";
+                }
+            }
+            
+            
+            
         }
 
         private void ButtonCancel_Click(object sender, RoutedEventArgs e)
