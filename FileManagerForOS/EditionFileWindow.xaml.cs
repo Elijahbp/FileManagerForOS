@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
+
 namespace FileManagerForOS
 {
     /// <summary>
@@ -20,11 +21,13 @@ namespace FileManagerForOS
     public partial class EditionWindow : Window
     {
 
-        
-        
+        private string nameFile;
+        public string NameFile { get => nameFile; set => nameFile = value; }
+
         public EditionWindow(string type, bool rename)
         {
             InitializeComponent();
+            NameFile = "";
             if (!rename)
             {
                 if (type == Properties.Resources.TYPE_DIRECTORY)
@@ -52,6 +55,8 @@ namespace FileManagerForOS
             
         }
 
+        
+
         private void ButtonCancel_Click(object sender, RoutedEventArgs e)
         {
             txtBoxNameFile.Text = "";
@@ -60,12 +65,14 @@ namespace FileManagerForOS
 
         private void ButtonOk_Click(object sender, RoutedEventArgs e)
         {
-            if (txtBoxNameFile.Text.Equals(""))
+            if (BaseStatics.isStringEquals(txtBoxNameFile.Text,""))
             {
                 MessageBox.Show("Введите имя!");
+                
             }
             else
             {
+                NameFile = txtBoxNameFile.Text;
                 this.Close();
             }
             

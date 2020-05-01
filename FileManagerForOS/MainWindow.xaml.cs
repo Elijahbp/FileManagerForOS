@@ -1,12 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Management;
 using System.Reflection;
+using System.Security.AccessControl;
+using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using static FileManagerForOS.BaseStatics;
 
 namespace FileManagerForOS
 {
@@ -19,8 +25,6 @@ namespace FileManagerForOS
         /*TODO
          * ПО необходимости из имеющегося:
          *
-         * 5) Сделать корректное получение и отображение метрик ПК
-         * 6) Поправить двойной клик на TreeViewItem
          *
          * По заданию из оставшегося:
          * 4) Доделать систему подгрузки новых сборок
@@ -29,14 +33,21 @@ namespace FileManagerForOS
         public MainWindow()
         {
             InitializeComponent();
+            //WindowUpdate windowUpdate = new WindowUpdate();
+            //windowUpdate.Show();
+            //if (windowUpdate.IsInitialize)
+            //{
             baseInit();
+            //}
+            //else
+            //{
+            //    this.Close();
+            //}
         }
 
         private const int MODE_STANDART_HIDE = 0;
         private const int MODE_SHOW_ALL = 1;
 
-        private const int ACTION_COPY = 10;
-        private const int ACTION_EXCISION = 11;
 
         private const int SORT_NAME = 100;
         private const int SORT_DATE = 101;
@@ -46,28 +57,39 @@ namespace FileManagerForOS
         private static Brush unselectedIconStyleFolder = new LinearGradientBrush(Colors.White, Colors.DarkGray, 45);
         private static Brush selectedIconStyle = new LinearGradientBrush(Colors.White, Colors.LightGray, 45);
 
+        private int totalRAM;
 
+        private List<object[]> listActions;
 
         private int selectedModeView = MODE_STANDART_HIDE;
         private Label selectedIcon;
         private string main_path;
         private DirectoryInfo selectedDirectory = null;
         private DirectoryInfo mainDirectory;
-        private int selectedAction; //Выбранное действие копирование/вырезание
+        TreeViewItem headTreeView;
+        private BaseStatics.FileActions selectedAction; //Выбранное действие копирование/вырезание
         string bufPath; //Используется для временного хранения пути файла (для дальнейшего удаления/копирования/перемещения) 
-
+        
 
         private void baseInit()
         {
-            lblNamePC.Content = System.Environment.MachineName;
+            //lblNamePC.Content = 
 
             //Получение корня, где лежит файловый менеджер
             main_path = Environment.CurrentDirectory;
             mainDirectory = new DirectoryInfo(main_path);
-            txtBoxPath.Text = main_path;
+            listActions = new List<object[]>();
+            totalRAM = BaseStatics.getRAM();
+            txtBoxPath.Text = convertPathForView(main_path);
             Directory.CreateDirectory(main_path + "\\System");
             File.SetAttributes(main_path + "\\System", FileAttributes.Hidden);
             Directory.CreateDirectory(main_path + "\\Мои документы");
+
+            headTreeView = generateTreeViewItem(mainDirectory);
+            headTreeView.Header = "Root";
+            headTreeView.IsExpanded=true;
+            mainTreeView.Items.Add(headTreeView);
+
             getViewByPath(main_path);
             getMainTreeView();
         }
@@ -77,6 +99,53 @@ namespace FileManagerForOS
             Directory.Delete(main_path + "\\System", true);
             Directory.Delete(main_path + "\\Мои документы", true);
         }
+
+        private string convertPathForView(string path)
+        {
+            return path.Replace(main_path,"");
+        }
+
+        private string reverseConvertPath(string path)
+        {
+            
+            return new StringBuilder().Append(main_path).Append(path).ToString();
+        }
+
+
+        private void OnCreateOrDelete(FileActions fileActions,string name, string destPath)
+        {
+            name += " ";
+            string message = DateTime.Now + ": " + fileActions + " " + name + "by path: " + convertPathForView(destPath);
+            OnChange(fileActions, message);
+        }
+
+        private void OnInsert(FileActions fileActions,string pathFrom, string pathDestination)
+        {
+            string message = DateTime.Now + ": " + fileActions + " from " + convertPathForView(pathFrom) + " in folder " + convertPathForView(pathDestination);
+            OnChange(fileActions, message);
+        }
+   
+        private void OnRenamed(string path,string oldName,string newName)
+        {
+            string message = DateTime.Now + ": " + FileActions.Rename + " " + oldName + " on new " + newName + " by path " + convertPathForView(path);
+            OnChange(FileActions.Rename,message);
+        }
+        
+        private void OnOpened(string path, string name)
+        {
+            string message = DateTime.Now + ": " + FileActions.Open + " " + name;
+            if (path.Length != 0)
+            {
+                message += " by path " + convertPathForView(path) ;
+            }
+            OnChange(FileActions.Open,message);
+        }
+
+        private void OnChange(FileActions fileActions, string message)
+        {
+            listActions.Add(new object[] { fileActions, message });
+        }
+
 
         #region логика работы с файлами/папками
 
@@ -90,10 +159,10 @@ namespace FileManagerForOS
         //Получение отображения древа
         private void getMainTreeView()
         {
-            mainTreeView.Items.Clear();
+            headTreeView.Items.Clear();
             foreach (TreeViewItem item in generateTreeView(mainDirectory))
             {
-                mainTreeView.Items.Add(item);
+                headTreeView.Items.Add(item);
             }
         }
 
@@ -102,7 +171,7 @@ namespace FileManagerForOS
         {
             MainSpace.Children.Clear();
             selectedDirectory = new DirectoryInfo(path);
-            txtBoxPath.Text = path;
+            txtBoxPath.Text = convertPathForView(path);
             List<FileInfo> filesInfo = new List<FileInfo>(selectedDirectory.GetFiles());
             List<DirectoryInfo> directoryInfos = new List<DirectoryInfo>(selectedDirectory.GetDirectories());
             if (typeSort == 0)
@@ -161,7 +230,6 @@ namespace FileManagerForOS
 
         }
 
-
         private Label generateShortcut(FileSystemInfo info)
         {
             Label shortcut = new Label()
@@ -170,17 +238,18 @@ namespace FileManagerForOS
                 Height = 100,
                 Margin = new Thickness(10),
                 VerticalContentAlignment = VerticalAlignment.Bottom,
-
+                
             };
-            if (!info.Extension.Equals(""))
+            if (info.Extension.Length !=0)
             {
                 shortcut.Content = info.Name.Replace(info.Extension, "");
+                
             }
             else
             {
                 shortcut.Content = info.Name;
             }
-
+            shortcut.ToolTip = info.Name;
 
             if (info is DirectoryInfo)
             {
@@ -304,7 +373,7 @@ namespace FileManagerForOS
         {
             TreeViewItem treeViewItem = new TreeViewItem();
             treeViewItem.Header = directoryInfo.Name;
-            treeViewItem.MouseDoubleClick += TreeViewItem_DoubleClick_OpenDirectory;
+            treeViewItem.MouseUp += TreeViewItem_MouseUp_OpenDirectory;
 
             List<MenuItem> menuItems = new List<MenuItem>();
             string[] infoForTag = new string[] { Properties.Resources.TYPE_DIRECTORY, directoryInfo.FullName };
@@ -339,19 +408,19 @@ namespace FileManagerForOS
             };
             renameElement.Click += MenuItem_Click_RenameFile;
 
-            MenuItem createNewFolder = new MenuItem()
+            MenuItem createNewDirectory = new MenuItem()
             {
                 Header = "Создать новую папку",
                 Tag = infoForTag
             };
-            createNewFolder.Click += SelectNewFolder;
-            createNewFolder.Click += MenuItem_Click_CreateNewFolder;
+            createNewDirectory.Click += SelectNewFolder;
+            createNewDirectory.Click += MenuItem_Click_CreateNewFolder;
 
             menuItems.Add(deleteElement);
             menuItems.Add(copyElement);
             menuItems.Add(cutElement);
             menuItems.Add(renameElement);
-            menuItems.Add(createNewFolder);
+            menuItems.Add(createNewDirectory);
             treeViewItem.ContextMenu = new ContextMenu()
             {
                 Name = "contextMenu",
@@ -389,13 +458,15 @@ namespace FileManagerForOS
             string[] tagData = ((string[])((MenuItem)sender).Tag);
             string typeElement = tagData[0];
             string path = tagData[1];
-            if (typeElement.Equals(Properties.Resources.TYPE_FILE))
+            if (isStringEquals(typeElement,Properties.Resources.TYPE_FILE))
             {
                 File.Delete(path);
+                OnCreateOrDelete(FileActions.Delete,"",path);
             }
-            else if (typeElement.Equals(Properties.Resources.TYPE_DIRECTORY))
+            else if (isStringEquals(typeElement,Properties.Resources.TYPE_DIRECTORY))
             {
                 Directory.Delete(path, true);
+                OnCreateOrDelete(FileActions.Delete,"", path);
             }
             refreshView();
 
@@ -405,7 +476,7 @@ namespace FileManagerForOS
         private void MenuItem_Click_CopyFile(object sender, RoutedEventArgs e)
         {
             bufPath = ((string[])((MenuItem)sender).Tag)[1];
-            selectedAction = ACTION_COPY;
+            selectedAction = BaseStatics.FileActions.Copy;
             insertMenuItem.IsEnabled = true;
         }
 
@@ -413,7 +484,7 @@ namespace FileManagerForOS
         private void MenuItem_Click_CutFile(object sender, RoutedEventArgs e)
         {
             bufPath = ((string[])((MenuItem)sender).Tag)[1];
-            selectedAction = ACTION_EXCISION;
+            selectedAction = BaseStatics.FileActions.Excision;
             insertMenuItem.IsEnabled = true;
         }
 
@@ -424,42 +495,32 @@ namespace FileManagerForOS
             string destFileName = selectedDirectory.FullName;
             FileInfo fileInfo = new FileInfo(bufPath);
             destFileName += "\\" + fileInfo.Name;
-            if (selectedAction == ACTION_COPY)
+            if (selectedAction == BaseStatics.FileActions.Copy)
             {
                 if (File.Exists(bufPath))
                 {
                     File.Copy(bufPath, destFileName, true);
+                    OnInsert(FileActions.Copy,bufPath, destFileName);
                 }
-                /*else if (Directory.Exists(bufPath))
-                {
-                    //Now Create all of the directories
-                    Directory.CreateDirectory(dirPath.Replace(bufPath, destFileName));
-                    foreach (string dirPath in Directory.GetDirectories(bufPath, "*",
-                        SearchOption.AllDirectories))
-                        Directory.CreateDirectory(dirPath.Replace(bufPath, destFileName));
-
-                    //Copy all the files & Replaces any files with the same name
-                    foreach (string newPath in Directory.GetFiles(bufPath, "*.*",
-                        SearchOption.AllDirectories))
-                        File.Copy(newPath, newPath.Replace(bufPath, destFileName), true);
-                }*/
 
             }
-            else if (selectedAction == ACTION_EXCISION)
+            else if (selectedAction == BaseStatics.FileActions.Excision)
             {
                 try
                 {
                     if (File.Exists(bufPath))
                     {
                         File.Move(bufPath, destFileName);
+                        OnInsert(FileActions.Excision,bufPath, destFileName);
                     }
                     else if (Directory.Exists(bufPath))
                     {
                         Directory.Move(bufPath, destFileName);
+                        OnInsert(FileActions.Excision,bufPath, destFileName);
                     }
                     insertMenuItem.IsEnabled = false;
                 }
-                catch (Exception exception)
+                catch (IOException exception)
                 {
                     MessageBox.Show(exception.Message);
                 }
@@ -478,18 +539,26 @@ namespace FileManagerForOS
             editionWindow.Owner = this;
             editionWindow.ShowDialog();
 
-            string newName = editionWindow.txtBoxNameFile.Text;
-            if (newName != "")
+            string newName = editionWindow.NameFile;
+            if (newName.Length != 0)
             {
-                if (typeElement.Equals(Properties.Resources.TYPE_FILE))
+                if (isStringEquals(typeElement,Properties.Resources.TYPE_FILE))
                 {
                     FileInfo k = new FileInfo(path);
-                    File.Move(path, k.DirectoryName + "\\" + newName + k.Extension);
+                    string oldName = k.Name;
+                    newName = newName + k.Extension;
+                    string newPath = k.DirectoryName + "\\" +newName;
+                    File.Move(path, newPath);
+                    OnRenamed(path, oldName,newName);
 
                 }
-                else if (typeElement.Equals(Properties.Resources.TYPE_DIRECTORY))
+                else if (isStringEquals(typeElement,Properties.Resources.TYPE_DIRECTORY))
                 {
-                    Directory.Move(path, new FileInfo(path).DirectoryName + "\\" + newName);
+                    FileInfo fileInfo = new FileInfo(path);
+                    string oldName = fileInfo.Name;
+                    string newPath = fileInfo.DirectoryName + "\\" + newName;
+                    Directory.Move(path,newPath);
+                    OnRenamed(path,oldName,newName);
                 }
 
             }
@@ -503,9 +572,20 @@ namespace FileManagerForOS
             creationWindow.Owner = this;
             creationWindow.ShowDialog();
             string name_file = creationWindow.txtBoxNameFile.Text;
-            if (name_file != "")
+            if (name_file.Length != 0)
             {
-                File.Create(selectedDirectory.FullName + "\\" + name_file + ".txt");
+                string dest = selectedDirectory.FullName + "\\" + name_file + ".txt";
+                try
+                {
+                    File.Create(dest).Close();
+                    OnCreateOrDelete(FileActions.Create, name_file, dest);
+                }
+                catch(IOException w)
+                {
+                    MessageBox.Show(w.Message);
+                }
+                
+                
                 refreshView();
             }
 
@@ -518,9 +598,11 @@ namespace FileManagerForOS
             creationWindow.Owner = this;
             creationWindow.ShowDialog();
             string name_folder = creationWindow.txtBoxNameFile.Text;
-            if (name_folder != "")
+            if (name_folder.Length != 0)
             {
-                Directory.CreateDirectory(selectedDirectory.FullName + "\\" + name_folder);
+                string dest = selectedDirectory.FullName + "\\" + name_folder;
+                Directory.CreateDirectory(dest);
+                OnCreateOrDelete(FileActions.Create, name_folder, dest);
                 refreshView();
             }
         }
@@ -545,6 +627,29 @@ namespace FileManagerForOS
                 "Версия программы: " + Assembly.GetExecutingAssembly().GetName().Version.ToString());
         }
 
+        private void MenuItem_Click_SortByName(object sender, RoutedEventArgs e)
+        {
+            getViewByPath(selectedDirectory.FullName, typeSort: SORT_NAME);
+        }
+
+        private void MenuItem_Click_SortByDate(object sender, RoutedEventArgs e)
+        {
+            getViewByPath(selectedDirectory.FullName, typeSort: SORT_DATE);
+        }
+
+        private void MenuItem_Click_SortByWeigth(object sender, RoutedEventArgs e)
+        {
+            getViewByPath(selectedDirectory.FullName, typeSort: SORT_WEIGHT);
+        }
+
+        private void MenuItem_Click_OpenWindowLogs(object sender, RoutedEventArgs e)
+        {
+            WindowLogs windowLogs = new WindowLogs(listActions,totalRAM);
+            windowLogs.Owner = this;
+            windowLogs.ShowDialog();
+            refreshView();
+        }
+
         //Предварительный выбор файла (используется только для элементов TreeViewItem)
         private void SelectNewFolder(object sender, RoutedEventArgs e)
         {
@@ -561,35 +666,45 @@ namespace FileManagerForOS
             string typeElement = tagData[0];
             string path = tagData[1];
             //Обработка файлов и папок:
-            if (typeElement.Equals(Properties.Resources.TYPE_DIRECTORY))
+            if (isStringEquals(typeElement,Properties.Resources.TYPE_DIRECTORY))
             {
                 getViewByPath(path);
             }
-            else if (typeElement.Equals(Properties.Resources.TYPE_FILE))
+            else if (isStringEquals(typeElement,Properties.Resources.TYPE_FILE))
             {
                 ProcessStartInfo processStart = new ProcessStartInfo(path);
                 try
                 {
                     Process.Start(processStart);
+                    OnOpened(path,new FileInfo(path).Name);
                 }
-                catch (Exception)
+                catch (FileNotFoundException)
                 {
-                    MessageBox.Show("Невозможно открыть программу");
+                    MessageBox.Show("ФАйл не найден!");
                 }
+                catch (InvalidOperationException)
+                {
+                    MessageBox.Show("Невозможно открыть файл!");
+                }
+
             }
         }
 
         //Событие "открытия" папки через элемент дерева
-        private void TreeViewItem_DoubleClick_OpenDirectory(object sender, RoutedEventArgs e)
+        private void TreeViewItem_MouseUp_OpenDirectory(object sender, MouseButtonEventArgs e)
         {
-            string[] tagData = ((string[])((TreeViewItem)sender).Tag);
-            string typeElement = tagData[0];
-            string path = tagData[1];
-            //Обработка файлов и папок:
-            if (typeElement.Equals(Properties.Resources.TYPE_DIRECTORY))
+            if (((TreeViewItem)sender).IsSelected)
             {
-                getViewByPath(path);
-            }/*
+                string[] tagData = ((string[])((TreeViewItem)sender).Tag);
+                string typeElement = tagData[0];
+                string path = tagData[1];
+                //Обработка файлов и папок:
+                if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
+                {
+                    getViewByPath(path);
+                }
+            }
+            /*
             else if (typeElement.Equals(Properties.Resources.TYPE_FILE))
             {
                 ProcessStartInfo processStart = new ProcessStartInfo(path);
@@ -608,7 +723,7 @@ namespace FileManagerForOS
         private void Select_Icon(object sender, RoutedEventArgs e)
         {
             string typeSender = sender.GetType().Name;
-            if (e.Source.GetType().Name.Equals("Label") && typeSender.Equals("Label"))
+            if (BaseStatics.isStringEquals(e.Source.GetType().Name,"Label") && BaseStatics.isStringEquals(typeSender,"Label"))
             {
                 if (selectedIcon == null)
                 {
@@ -618,11 +733,11 @@ namespace FileManagerForOS
                 else
                 {
                     string type = ((string[])selectedIcon.Tag)[0];
-                    if (type.Equals(Properties.Resources.TYPE_FILE))
+                    if (BaseStatics.isStringEquals(type,Properties.Resources.TYPE_FILE))
                     {
                         selectedIcon.Background = unselectedIconStyleFile;
                     }
-                    else if (type.Equals(Properties.Resources.TYPE_DIRECTORY))
+                    else if (BaseStatics.isStringEquals(type,Properties.Resources.TYPE_DIRECTORY))
                     {
                         selectedIcon.Background = unselectedIconStyleFolder;
                     }
@@ -630,16 +745,16 @@ namespace FileManagerForOS
                     selectedIcon.Background = selectedIconStyle;
                 }
             }
-            else if (e.Source.GetType().Name.Equals("WrapPanel"))
+            else if (BaseStatics.isStringEquals(e.Source.GetType().Name,"WrapPanel"))
             {
                 if (selectedIcon != null)
                 {
                     string type = ((string[])selectedIcon.Tag)[0];
-                    if (type.Equals(Properties.Resources.TYPE_FILE))
+                    if (BaseStatics.isStringEquals(type,Properties.Resources.TYPE_FILE))
                     {
                         selectedIcon.Background = unselectedIconStyleFile;
                     }
-                    else if (type.Equals(Properties.Resources.TYPE_DIRECTORY))
+                    else if (BaseStatics.isStringEquals(type,Properties.Resources.TYPE_DIRECTORY))
                     {
                         selectedIcon.Background = unselectedIconStyleFolder;
                     }
@@ -671,7 +786,7 @@ namespace FileManagerForOS
         {
             if (e.Key == Key.Enter)
             {
-                getViewByPath(txtBoxPath.Text);
+                getViewByPath(reverseConvertPath(txtBoxPath.Text));
                 txtBoxPath.IsReadOnly = true;
             }
         }
@@ -689,22 +804,41 @@ namespace FileManagerForOS
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             KillingBase();
+            //new WindowUpdate().ShowDialog();
+            //TODO: Проверка на обновления
+            Console.WriteLine("Ok");
         }
 
-        private void MenuItem_Click_SortByName(object sender, RoutedEventArgs e)
+        private void MenuItem_Click_Launch_CMD(object sender, RoutedEventArgs e)
         {
-            getViewByPath(selectedDirectory.FullName,typeSort:SORT_NAME);
+            Process.Start("CMD.exe");
+            OnOpened("","CMD.exe"); 
         }
 
-        private void MenuItem_Click_SortByDate(object sender, RoutedEventArgs e)
+        private void MenuItem_Click_Launch_PowerShell(object sender, RoutedEventArgs e)
         {
-            getViewByPath(selectedDirectory.FullName, typeSort:SORT_DATE );
+            Process.Start("PowerShell.exe");
+            OnOpened("", "PowerShell.exe");
+        }
+        
+        private void MenuItem_Click_Launch_MonitorResources(object sender, RoutedEventArgs e)
+        {
+            Process.Start("perfmon.exe");
+            OnOpened("", "perfmon.exe");
         }
 
-        private void MenuItem_Click_SortByWeigth(object sender, RoutedEventArgs e)
+        private void MenuItem_Click_Launch_Services(object sender, RoutedEventArgs e)
         {
-            getViewByPath(selectedDirectory.FullName, typeSort:SORT_WEIGHT);
+            Process.Start("services.msc");
+            OnOpened("", "services.msc");
         }
+
+        private void MenuItem_Click_Launch_Note(object sender, RoutedEventArgs e)
+        {
+            Process.Start("notepad.exe");
+            OnOpened("", "notepad.exe");
+        }
+
     }
 
     #endregion

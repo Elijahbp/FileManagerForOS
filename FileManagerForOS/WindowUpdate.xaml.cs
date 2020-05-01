@@ -15,13 +15,17 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using static FileManagerForOS.BaseStatics;
 
 namespace FileManagerForOS
 {
     public partial class WindowUpdate : Window
     {
+        private bool isUpdate;
 
-        class Manifest
+        public bool IsInitialize { get => isUpdate; set => isUpdate = value; }
+
+        struct Manifest
         {
             public string name { get; set; }
             public string version { get; set; }
@@ -38,24 +42,23 @@ namespace FileManagerForOS
             string jsonText = File.ReadAllText("manifest.json");
             Manifest manifest = JsonConvert.DeserializeObject<Manifest>(jsonText);
 
-            if (manifest.version.Equals(Assembly.GetExecutingAssembly().GetName().Version.ToString()))
+            if (isStringEquals(manifest.version,Assembly.GetExecutingAssembly().GetName().Version.ToString()))
             {
-                MainWindow mainWindow = new MainWindow();
-                mainWindow.Owner = this;
-                mainWindow.Show();
+                isUpdate = true;
+                
             }
-            else
+            else 
             {
-
+                isUpdate = false;
                 //Должно произойти скачивание обновленной версии (В данном случае - просто иметь второй exe)
             }
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-
-            this.Hide();
             checkVersion();
+            this.Close();
         }
+
     }
 }

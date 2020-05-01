@@ -19,12 +19,19 @@
                 <MenuItem Header="Создать новый файл" Click="MenuItem_Click_CreateNewFile"/>
                 <MenuItem Header="Создать новую папку" Click="MenuItem_Click_CreateNewFolder"/>
             </MenuItem>
+            <MenuItem Header="Логи" Click="MenuItem_Click_OpenWindowLogs"/>
+            <MenuItem Header="Утилиты">
+                <MenuItem Header="Командная строка" Click="MenuItem_Click_Launch_CMD"/>
+                <MenuItem Header="Power Shell" Click="MenuItem_Click_Launch_PowerShell"/>
+                <MenuItem Header="Монитор ресурсов" Click="MenuItem_Click_Launch_MonitorResources"/>
+                <MenuItem Header="Службы" Click="MenuItem_Click_Launch_Services"/>
+                <MenuItem Header="Блокнот" Click="MenuItem_Click_Launch_Note"/>
+                
+            </MenuItem>
             <MenuItem Header="Справка" Click="MenuItem_Click_ShowReference"/>
             <MenuItem Header="О программе" Click="MenuItem_Click_ShowAboutProgramm"/>
+            
         </Menu>
-
-
-        <Label x:Name="lblNamePC" Content="NamePC" Margin="0,30,10,0" Height="23" VerticalAlignment="Top" HorizontalAlignment="Right" Width="125" Grid.Column="1" TextOptions.TextFormattingMode="Display"/>
         <TreeView x:Name="mainTreeView" Margin="12,58,0,10" HorizontalAlignment="Left" Width="180" >
             <TreeView.ContextMenu>
                 <ContextMenu>
@@ -69,7 +76,7 @@
         </ScrollViewer>
 
         <Button x:Name="btnBack" Content="Вверх" HorizontalAlignment="Left" Margin="12,30,0,0" VerticalAlignment="Top" Width="70" Click="btnBack_Click" Height="23" />
-        <TextBox x:Name="txtBoxPath"  Grid.Column="1" Height="23" Margin="10,30,140,0" TextWrapping="Wrap" Text="Path" VerticalAlignment="Top" KeyDown ="txtBoxPath_KeyDownEnterPath"/>
+        <TextBox x:Name="txtBoxPath"  Grid.Column="1" Height="23" Margin="10,30,10,0" TextWrapping="Wrap" Text="Path" VerticalAlignment="Top" KeyDown ="txtBoxPath_KeyDownEnterPath"/>
 
 
     </Grid>
