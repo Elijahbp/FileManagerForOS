@@ -73,10 +73,12 @@ namespace FileManagerForOS
         private string textAbout ;
 
         private string splitter = "\n"+new string('-',50) + "\n";
+        private const string forHelp = "for help use -h or --help";
         private const string helpToConsole = "Команды исполнения:\n" +
             "\tCreate File: -ctf (--createFile) name (path)\n" +
             "\tCreate Directory: -ctd (--createDirectory) name (path)\n" +
-            "\tDelete: -de (--delete) pathToFile\n" +
+            "\tDelete file: -deF (--deleteFile) path_to_file\n" +
+            "\tDelete directory: -deD (--deleteDirectory) path_to_directory\n" +
             "\tLaunch: -ln (--launch) name \n" +
             "\tLogs: --logs name_output_file\n" +
             "\tAbout: --about\n" +
@@ -862,22 +864,39 @@ namespace FileManagerForOS
             }
         }
 
-        private void DeleteFile(string typeElement, string path)
+        private bool DeleteFile(string typeElement, string path)
         {
             if (isStringEquals(typeElement, Properties.Resources.TYPE_FILE))
             {
-                File.Delete(path);
-                OnCreateOrDelete(FileActions.Delete, "", path);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    OnCreateOrDelete(FileActions.Delete, "", path);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+                
             }
             else if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
             {
-                if (isStringEquals(path, selectedDirectory.FullName))
-                {
-                    selectedDirectory = selectedDirectory.Parent;
+                if (Directory.Exists(path)){
+                    if (isStringEquals(path, selectedDirectory.FullName))
+                    {
+                        selectedDirectory = selectedDirectory.Parent;
+                    }
+                    Directory.Delete(path, true);
+                    OnCreateOrDelete(FileActions.Delete, "", path);
+                    return true;
                 }
-                Directory.Delete(path, true);
-                OnCreateOrDelete(FileActions.Delete, "", path);
+                else
+                {
+                    return false;
+                }
             }
+            return false;
         }
 
         private void LaunchProcess(string path, string nameProcess)
@@ -982,12 +1001,15 @@ namespace FileManagerForOS
                         string path = main_path + executedComand[1];
                         if (isPath(executedComand[1]))
                         {
-                            DeleteFile(Properties.Resources.TYPE_DIRECTORY, path);
-                            txtBlockConsole.Text += "Directory " + path + " - deleted";
+                            if (DeleteFile(Properties.Resources.TYPE_DIRECTORY, path))
+                            {
+
+                                txtBlockConsole.Text += "Directory " + path + " - deleted";
+                            }
                         }
                         else
                         {
-                            txtBlockConsole.Text += "Unexpected path: "+path;
+                            txtBlockConsole.Text += "Unexpected path: "+path+". "+forHelp;
                         }
                         txtBlockConsole.Text += splitter;
                         break;
@@ -997,8 +1019,15 @@ namespace FileManagerForOS
                         string path = main_path + executedComand[1];
                         //if (isPath(executedComand[1]))
                         //{
-                        DeleteFile(Properties.Resources.TYPE_FILE, path);
-                        txtBlockConsole.Text += "File " + path + " - deleted";
+                        if (DeleteFile(Properties.Resources.TYPE_FILE, path))
+                        {
+
+                            txtBlockConsole.Text += "File " + path + " - deleted";
+                        }
+                        else
+                        {
+                            txtBlockConsole.Text += "Unexpected file on path: " + path + ". " + forHelp;
+                        }
                         //}
                         //else
                         //{
@@ -1029,6 +1058,7 @@ namespace FileManagerForOS
                         executedComand.ForEach((string k) => {
                             txtBlockConsole.Text += k + " ";
                         });
+                        txtBlockConsole.Text += ". " + forHelp;
                         txtBlockConsole.Text += splitter;
                         break;
                     }
@@ -1060,8 +1090,7 @@ namespace FileManagerForOS
                     }
                     else
                     {
-                        txtBlockConsole.Text += "Unexpected command: ";
-                        txtBlockConsole.Text += executedComand[i] + " ";
+                        txtBlockConsole.Text += "Unexpected command: "+ executedComand[i] + ". "+ forHelp;
                         txtBlockConsole.Text += splitter;
                     }
                 }
