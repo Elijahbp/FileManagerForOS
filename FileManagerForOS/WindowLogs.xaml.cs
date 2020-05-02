@@ -35,7 +35,6 @@ namespace FileManagerForOS
         private const string workVirtualMemory = "Используемая вируальная память: ";
         private const string maxVirtualMemory = "Максимальное значение виртуальной памяти: ";
         private const string timeWork = "Время работы текущего сеанса: ";
-        private const string splitter = "---------------------------------------------------------------------------";
 
         Process processInfo;
         Thread threadMemoryStat;
@@ -63,8 +62,8 @@ namespace FileManagerForOS
 
             initComboBoxElements();
 
-            txtBlockFirstSelectedLogs.Text = getSelectedLogs(FileActions.All);
-            txtBlockSecondSelectedLogs.Text = getSelectedLogs(FileActions.All);
+            txtBlockFirstSelectedLogs.Text = getSelectedLogs(FileActions.All, listActions);
+            txtBlockSecondSelectedLogs.Text = getSelectedLogs(FileActions.All, listActions);
 
             
 
@@ -148,39 +147,16 @@ namespace FileManagerForOS
         }
 
 
-        private string getSelectedLogs(FileActions action)
-        {
-            if (action.Equals(FileActions.All)){
-                StringBuilder stringBuilder = new StringBuilder();
-                foreach (object[] element in listActions)
-                {
-                    stringBuilder.AppendLine(element[1].ToString()).AppendLine(splitter);
-                }
-                return stringBuilder.ToString();
-            }
-            else
-            {
-                StringBuilder stringBuilder = new StringBuilder();
-                foreach (object[] element in listActions)
-                {
-                    if(action.Equals((FileActions)element[0]))
-                    {
-                        stringBuilder.AppendLine(element[1].ToString()).AppendLine(splitter);
-                    }
-                }
-                return stringBuilder.ToString(); 
-            }
-            return null;
-        }
+        
 
         private void cmbBoxSelectTypeFileActionsToViewFirst_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            txtBlockFirstSelectedLogs.Text = getSelectedLogs((FileActions)((ComboBoxItem)cmbBoxSelectTypeFileActionsToViewFirst.SelectedItem).Tag);
+            txtBlockFirstSelectedLogs.Text = getSelectedLogs((FileActions)((ComboBoxItem)cmbBoxSelectTypeFileActionsToViewFirst.SelectedItem).Tag,listActions);
         }
 
         private void cmbBoxSelectTypeFileActionsToViewSecond_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            txtBlockSecondSelectedLogs.Text = getSelectedLogs((FileActions)((ComboBoxItem)cmbBoxSelectTypeFileActionsToViewSecond.SelectedItem).Tag);
+            txtBlockSecondSelectedLogs.Text = getSelectedLogs((FileActions)((ComboBoxItem)cmbBoxSelectTypeFileActionsToViewSecond.SelectedItem).Tag, listActions);
         }
 
         private void Button_Click_SaveLogs(object sender, RoutedEventArgs e)
@@ -190,20 +166,10 @@ namespace FileManagerForOS
             creationWindow.ShowDialog();
             if (creationWindow.NameFile.Length != 0)
             {
-                string logFileName = creationWindow.NameFile + ".txt";
-                string pathToSave = Environment.CurrentDirectory;
-                try
-                {
-
-                    File.WriteAllText(pathToSave + "\\" + logFileName, getSelectedLogs((FileActions)((ComboBoxItem)cmbBoxSelectTypeFileActionsToSave.SelectedItem).Tag));
-                    MessageBox.Show("Файл успешно создан!\nЕго расположение: " + Environment.CurrentDirectory);
-                }
-                catch (IOException w)
-                {
-                    MessageBox.Show("Невозможно создать файл логов!\nОшибка:" + w.Message);
-                }
+                SaveLogs(creationWindow.NameFile,listActions, (FileActions)((ComboBoxItem)cmbBoxSelectTypeFileActionsToSave.SelectedItem).Tag);
             }
         }
+
 
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)

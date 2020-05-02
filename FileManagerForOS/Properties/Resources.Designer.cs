@@ -84,6 +84,15 @@ namespace FileManagerForOS.Properties {
         }
         
         /// <summary>
+        ///   Ищет локализованную строку, похожую на ---------------------------------------------------------------------------.
+        /// </summary>
+        internal static string splitter {
+            get {
+                return ResourceManager.GetString("splitter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Ищет локализованную строку, похожую на DirectoryInfo.
         /// </summary>
         internal static string TYPE_DIRECTORY {

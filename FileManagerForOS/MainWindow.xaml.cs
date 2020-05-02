@@ -69,12 +69,25 @@ namespace FileManagerForOS
         TreeViewItem headTreeView;
         private BaseStatics.FileActions selectedAction; //Выбранное действие копирование/вырезание
         string bufPath; //Используется для временного хранения пути файла (для дальнейшего удаления/копирования/перемещения) 
-        
+
+        private string textAbout ;
+
+        private string splitter = "\n"+new string('-',50) + "\n";
+        private const string helpToConsole = "Команды исполнения:\n" +
+            "\tCreate File: -ctf (--createFile) name (path)\n" +
+            "\tCreate Directory: -ctd (--createDirectory) name (path)\n" +
+            "\tDelete: -de (--delete) pathToFile\n" +
+            "\tLaunch: -ln (--launch) name \n" +
+            "\tLogs: --logs name_output_file\n" +
+            "\tAbout: --about\n" +
+            "\tDocumentation: --doc\n" +
+            "\tClear: --clear\n" +
+            "\tHelp: -h (--help)\n" +
+            "\tExit: --exit";
+
 
         private void baseInit()
         {
-            //lblNamePC.Content = 
-
             //Получение корня, где лежит файловый менеджер
             main_path = Environment.CurrentDirectory;
             mainDirectory = new DirectoryInfo(main_path);
@@ -83,12 +96,15 @@ namespace FileManagerForOS
             txtBoxPath.Text = convertPathForView(main_path);
             Directory.CreateDirectory(main_path + "\\System");
             File.SetAttributes(main_path + "\\System", FileAttributes.Hidden);
-            Directory.CreateDirectory(main_path + "\\Мои документы");
+            Directory.CreateDirectory(main_path + "\\MyDocuments");
 
             headTreeView = generateTreeViewItem(mainDirectory);
             headTreeView.Header = "Root";
-            headTreeView.IsExpanded=true;
+            headTreeView.IsExpanded = true;
             mainTreeView.Items.Add(headTreeView);
+
+            textAbout = FileManagerForOS.Properties.Resources.About + "\n" +
+                "Версия программы: " + Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
             getViewByPath(main_path);
             getMainTreeView();
@@ -97,48 +113,51 @@ namespace FileManagerForOS
         private void KillingBase()
         {
             Directory.Delete(main_path + "\\System", true);
-            Directory.Delete(main_path + "\\Мои документы", true);
+            if(Directory.Exists(main_path + "\\MyDocuments"))
+            {
+                Directory.Delete(main_path + "\\MyDocuments", true);
+            }
         }
 
         private string convertPathForView(string path)
         {
-            return path.Replace(main_path,"");
+            return path.Replace(main_path, "");
         }
 
         private string reverseConvertPath(string path)
         {
-            
+
             return new StringBuilder().Append(main_path).Append(path).ToString();
         }
 
 
-        private void OnCreateOrDelete(FileActions fileActions,string name, string destPath)
+        private void OnCreateOrDelete(FileActions fileActions, string name, string destPath)
         {
             name += " ";
             string message = DateTime.Now + ": " + fileActions + " " + name + "by path: " + convertPathForView(destPath);
             OnChange(fileActions, message);
         }
 
-        private void OnInsert(FileActions fileActions,string pathFrom, string pathDestination)
+        private void OnInsert(FileActions fileActions, string pathFrom, string pathDestination)
         {
             string message = DateTime.Now + ": " + fileActions + " from " + convertPathForView(pathFrom) + " in folder " + convertPathForView(pathDestination);
             OnChange(fileActions, message);
         }
-   
-        private void OnRenamed(string path,string oldName,string newName)
+
+        private void OnRenamed(string path, string oldName, string newName)
         {
             string message = DateTime.Now + ": " + FileActions.Rename + " " + oldName + " on new " + newName + " by path " + convertPathForView(path);
-            OnChange(FileActions.Rename,message);
+            OnChange(FileActions.Rename, message);
         }
-        
+
         private void OnOpened(string path, string name)
         {
             string message = DateTime.Now + ": " + FileActions.Open + " " + name;
-            if (path.Length != 0)
+            if (path.Length != 0 || path != null)
             {
-                message += " by path " + convertPathForView(path) ;
+                message += " by path " + convertPathForView(path);
             }
-            OnChange(FileActions.Open,message);
+            OnChange(FileActions.Open, message);
         }
 
         private void OnChange(FileActions fileActions, string message)
@@ -167,7 +186,7 @@ namespace FileManagerForOS
         }
 
 
-        private void getViewByPath(string path,int typeSort=0)
+        private void getViewByPath(string path, int typeSort = 0)
         {
             MainSpace.Children.Clear();
             selectedDirectory = new DirectoryInfo(path);
@@ -176,7 +195,7 @@ namespace FileManagerForOS
             List<DirectoryInfo> directoryInfos = new List<DirectoryInfo>(selectedDirectory.GetDirectories());
             if (typeSort == 0)
             {
-                
+
             }
             else if (typeSort == SORT_NAME)
             {
@@ -238,12 +257,12 @@ namespace FileManagerForOS
                 Height = 100,
                 Margin = new Thickness(10),
                 VerticalContentAlignment = VerticalAlignment.Bottom,
-                
+
             };
-            if (info.Extension.Length !=0)
+            if (info.Extension.Length != 0)
             {
                 shortcut.Content = info.Name.Replace(info.Extension, "");
-                
+
             }
             else
             {
@@ -458,16 +477,7 @@ namespace FileManagerForOS
             string[] tagData = ((string[])((MenuItem)sender).Tag);
             string typeElement = tagData[0];
             string path = tagData[1];
-            if (isStringEquals(typeElement,Properties.Resources.TYPE_FILE))
-            {
-                File.Delete(path);
-                OnCreateOrDelete(FileActions.Delete,"",path);
-            }
-            else if (isStringEquals(typeElement,Properties.Resources.TYPE_DIRECTORY))
-            {
-                Directory.Delete(path, true);
-                OnCreateOrDelete(FileActions.Delete,"", path);
-            }
+            DeleteFile(typeElement, path);
             refreshView();
 
         }
@@ -500,7 +510,7 @@ namespace FileManagerForOS
                 if (File.Exists(bufPath))
                 {
                     File.Copy(bufPath, destFileName, true);
-                    OnInsert(FileActions.Copy,bufPath, destFileName);
+                    OnInsert(FileActions.Copy, bufPath, destFileName);
                 }
 
             }
@@ -511,12 +521,12 @@ namespace FileManagerForOS
                     if (File.Exists(bufPath))
                     {
                         File.Move(bufPath, destFileName);
-                        OnInsert(FileActions.Excision,bufPath, destFileName);
+                        OnInsert(FileActions.Excision, bufPath, destFileName);
                     }
                     else if (Directory.Exists(bufPath))
                     {
                         Directory.Move(bufPath, destFileName);
-                        OnInsert(FileActions.Excision,bufPath, destFileName);
+                        OnInsert(FileActions.Excision, bufPath, destFileName);
                     }
                     insertMenuItem.IsEnabled = false;
                 }
@@ -528,6 +538,7 @@ namespace FileManagerForOS
             }
             refreshView();
         }
+
 
         //Переименовать
         private void MenuItem_Click_RenameFile(object sender, RoutedEventArgs e)
@@ -542,23 +553,23 @@ namespace FileManagerForOS
             string newName = editionWindow.NameFile;
             if (newName.Length != 0)
             {
-                if (isStringEquals(typeElement,Properties.Resources.TYPE_FILE))
+                if (isStringEquals(typeElement, Properties.Resources.TYPE_FILE))
                 {
                     FileInfo k = new FileInfo(path);
                     string oldName = k.Name;
                     newName = newName + k.Extension;
-                    string newPath = k.DirectoryName + "\\" +newName;
+                    string newPath = k.DirectoryName + "\\" + newName;
                     File.Move(path, newPath);
-                    OnRenamed(path, oldName,newName);
+                    OnRenamed(path, oldName, newName);
 
                 }
-                else if (isStringEquals(typeElement,Properties.Resources.TYPE_DIRECTORY))
+                else if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
                 {
                     FileInfo fileInfo = new FileInfo(path);
                     string oldName = fileInfo.Name;
                     string newPath = fileInfo.DirectoryName + "\\" + newName;
-                    Directory.Move(path,newPath);
-                    OnRenamed(path,oldName,newName);
+                    Directory.Move(path, newPath);
+                    OnRenamed(path, oldName, newName);
                 }
 
             }
@@ -571,21 +582,20 @@ namespace FileManagerForOS
             EditionWindow creationWindow = new EditionWindow(Properties.Resources.TYPE_FILE, false);
             creationWindow.Owner = this;
             creationWindow.ShowDialog();
-            string name_file = creationWindow.txtBoxNameFile.Text;
-            if (name_file.Length != 0)
+            string nameFile = creationWindow.txtBoxNameFile.Text;
+            if (nameFile.Length != 0)
             {
-                string dest = selectedDirectory.FullName + "\\" + name_file + ".txt";
+                string destPath = selectedDirectory.FullName;
                 try
                 {
-                    File.Create(dest).Close();
-                    OnCreateOrDelete(FileActions.Create, name_file, dest);
+                    CreateFile(nameFile, destPath);
                 }
-                catch(IOException w)
+                catch (IOException w)
                 {
                     MessageBox.Show(w.Message);
                 }
-                
-                
+
+
                 refreshView();
             }
 
@@ -597,15 +607,15 @@ namespace FileManagerForOS
             EditionWindow creationWindow = new EditionWindow(Properties.Resources.TYPE_DIRECTORY, false);
             creationWindow.Owner = this;
             creationWindow.ShowDialog();
-            string name_folder = creationWindow.txtBoxNameFile.Text;
-            if (name_folder.Length != 0)
+            string nameFolder = creationWindow.txtBoxNameFile.Text;
+            if (nameFolder.Length != 0)
             {
-                string dest = selectedDirectory.FullName + "\\" + name_folder;
-                Directory.CreateDirectory(dest);
-                OnCreateOrDelete(FileActions.Create, name_folder, dest);
+                string dest = selectedDirectory.FullName;
+                CreateDirectory(dest, nameFolder);
                 refreshView();
             }
         }
+
 
         //Обновление отображения
         private void MenuItem_Click_RefreshView(object sender, RoutedEventArgs e)
@@ -623,8 +633,7 @@ namespace FileManagerForOS
         //Отображение окна "О программе"
         private void MenuItem_Click_ShowAboutProgramm(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(FileManagerForOS.Properties.Resources.About + "\n" +
-                "Версия программы: " + Assembly.GetExecutingAssembly().GetName().Version.ToString());
+            MessageBox.Show(textAbout);
         }
 
         private void MenuItem_Click_SortByName(object sender, RoutedEventArgs e)
@@ -644,7 +653,7 @@ namespace FileManagerForOS
 
         private void MenuItem_Click_OpenWindowLogs(object sender, RoutedEventArgs e)
         {
-            WindowLogs windowLogs = new WindowLogs(listActions,totalRAM);
+            WindowLogs windowLogs = new WindowLogs(listActions, totalRAM);
             windowLogs.Owner = this;
             windowLogs.ShowDialog();
             refreshView();
@@ -666,28 +675,7 @@ namespace FileManagerForOS
             string typeElement = tagData[0];
             string path = tagData[1];
             //Обработка файлов и папок:
-            if (isStringEquals(typeElement,Properties.Resources.TYPE_DIRECTORY))
-            {
-                getViewByPath(path);
-            }
-            else if (isStringEquals(typeElement,Properties.Resources.TYPE_FILE))
-            {
-                ProcessStartInfo processStart = new ProcessStartInfo(path);
-                try
-                {
-                    Process.Start(processStart);
-                    OnOpened(path,new FileInfo(path).Name);
-                }
-                catch (FileNotFoundException)
-                {
-                    MessageBox.Show("ФАйл не найден!");
-                }
-                catch (InvalidOperationException)
-                {
-                    MessageBox.Show("Невозможно открыть файл!");
-                }
-
-            }
+            OpenFile(typeElement, path);
         }
 
         //Событие "открытия" папки через элемент дерева
@@ -699,10 +687,7 @@ namespace FileManagerForOS
                 string typeElement = tagData[0];
                 string path = tagData[1];
                 //Обработка файлов и папок:
-                if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
-                {
-                    getViewByPath(path);
-                }
+                OpenFile(typeElement, path);
             }
             /*
             else if (typeElement.Equals(Properties.Resources.TYPE_FILE))
@@ -723,7 +708,7 @@ namespace FileManagerForOS
         private void Select_Icon(object sender, RoutedEventArgs e)
         {
             string typeSender = sender.GetType().Name;
-            if (BaseStatics.isStringEquals(e.Source.GetType().Name,"Label") && BaseStatics.isStringEquals(typeSender,"Label"))
+            if (BaseStatics.isStringEquals(e.Source.GetType().Name, "Label") && BaseStatics.isStringEquals(typeSender, "Label"))
             {
                 if (selectedIcon == null)
                 {
@@ -733,11 +718,11 @@ namespace FileManagerForOS
                 else
                 {
                     string type = ((string[])selectedIcon.Tag)[0];
-                    if (BaseStatics.isStringEquals(type,Properties.Resources.TYPE_FILE))
+                    if (BaseStatics.isStringEquals(type, Properties.Resources.TYPE_FILE))
                     {
                         selectedIcon.Background = unselectedIconStyleFile;
                     }
-                    else if (BaseStatics.isStringEquals(type,Properties.Resources.TYPE_DIRECTORY))
+                    else if (BaseStatics.isStringEquals(type, Properties.Resources.TYPE_DIRECTORY))
                     {
                         selectedIcon.Background = unselectedIconStyleFolder;
                     }
@@ -745,16 +730,16 @@ namespace FileManagerForOS
                     selectedIcon.Background = selectedIconStyle;
                 }
             }
-            else if (BaseStatics.isStringEquals(e.Source.GetType().Name,"WrapPanel"))
+            else if (BaseStatics.isStringEquals(e.Source.GetType().Name, "WrapPanel"))
             {
                 if (selectedIcon != null)
                 {
                     string type = ((string[])selectedIcon.Tag)[0];
-                    if (BaseStatics.isStringEquals(type,Properties.Resources.TYPE_FILE))
+                    if (BaseStatics.isStringEquals(type, Properties.Resources.TYPE_FILE))
                     {
                         selectedIcon.Background = unselectedIconStyleFile;
                     }
-                    else if (BaseStatics.isStringEquals(type,Properties.Resources.TYPE_DIRECTORY))
+                    else if (BaseStatics.isStringEquals(type, Properties.Resources.TYPE_DIRECTORY))
                     {
                         selectedIcon.Background = unselectedIconStyleFolder;
                     }
@@ -811,36 +796,287 @@ namespace FileManagerForOS
 
         private void MenuItem_Click_Launch_CMD(object sender, RoutedEventArgs e)
         {
-            Process.Start("CMD.exe");
-            OnOpened("","CMD.exe"); 
+            LaunchProcess("", "CMD.exe");
         }
 
         private void MenuItem_Click_Launch_PowerShell(object sender, RoutedEventArgs e)
         {
-            Process.Start("PowerShell.exe");
-            OnOpened("", "PowerShell.exe");
+            LaunchProcess("", "PowerShell.exe");
         }
-        
+
         private void MenuItem_Click_Launch_MonitorResources(object sender, RoutedEventArgs e)
         {
-            Process.Start("perfmon.exe");
-            OnOpened("", "perfmon.exe");
+            LaunchProcess("", "perfmon.exe");
         }
 
         private void MenuItem_Click_Launch_Services(object sender, RoutedEventArgs e)
         {
-            Process.Start("services.msc");
-            OnOpened("", "services.msc");
+            LaunchProcess("", "services.msc");
         }
 
         private void MenuItem_Click_Launch_Note(object sender, RoutedEventArgs e)
         {
-            Process.Start("notepad.exe");
-            OnOpened("", "notepad.exe");
+            LaunchProcess("", "notepad.exe");
         }
 
+        #endregion
+
+
+        //Основные методы по работе с файлами (за исключением copy,cut)
+        private void CreateDirectory(string destPath, string nameFolder)
+        {
+            
+            Directory.CreateDirectory(destPath + "\\" + nameFolder);
+            OnCreateOrDelete(FileActions.Create, nameFolder, destPath);
+        }
+
+        private void CreateFile(string nameFile, string destPath)
+        {
+            destPath += "\\" + nameFile + ".txt";
+            File.Create(destPath).Close();
+            OnCreateOrDelete(FileActions.Create, nameFile, destPath);
+        }
+
+        private void OpenFile(string typeElement, string path)
+        {
+            if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
+            {
+                getViewByPath(path);
+            }
+            else if (isStringEquals(typeElement, Properties.Resources.TYPE_FILE))
+            {
+                ProcessStartInfo processStart = new ProcessStartInfo(path);
+                try
+                {
+                    Process.Start(processStart);
+                    OnOpened(path, new FileInfo(path).Name);
+                }
+                catch (FileNotFoundException)
+                {
+                    MessageBox.Show("ФАйл не найден!");
+                }
+                catch (InvalidOperationException)
+                {
+                    MessageBox.Show("Невозможно открыть файл!");
+                }
+            }
+        }
+
+        private void DeleteFile(string typeElement, string path)
+        {
+            if (isStringEquals(typeElement, Properties.Resources.TYPE_FILE))
+            {
+                File.Delete(path);
+                OnCreateOrDelete(FileActions.Delete, "", path);
+            }
+            else if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
+            {
+                if (isStringEquals(path, selectedDirectory.FullName))
+                {
+                    selectedDirectory = selectedDirectory.Parent;
+                }
+                Directory.Delete(path, true);
+                OnCreateOrDelete(FileActions.Delete, "", path);
+            }
+        }
+
+        private void LaunchProcess(string path, string nameProcess)
+        {
+            Process.Start(nameProcess);
+            OnOpened(path, nameProcess);
+        }
+
+
+
+        #region логика работы Консоли
+        private void txtBoxConsole_KeyDown(object sender, KeyEventArgs e)
+        {
+            //Пока реализуем исполнение по одной команде
+            if (e.Key == Key.Enter)
+            {
+                List<string> executedComand = parse(txtBoxConsoleLine.Text);
+                txtBlockConsole.Text += txtBoxConsoleLine.Text +"\n";
+                executeComand(executedComand);
+                txtBoxConsoleLine.Text = "";
+            }
+        }
+
+
+
+        private List<string> parse(string command)
+        {
+            string[] bufArray = command.Split(' ');
+            List<string> commandData = new List<string>();
+            for (int i =0;i< bufArray.Length; i++)
+            {
+                if (bufArray[i].Length != 0)
+                {
+                    commandData.Add(bufArray[i]);
+                }
+            }
+            return commandData;
+        }
+
+        private void executeComand (List<string> executedComand)
+        {
+            int iterator = 0;
+            string part;
+            for (int i = 0; i < executedComand.Count; i++)
+            {
+                part = executedComand[i];
+                if  (executedComand.Count > 1 && executedComand.Count <=3)
+                {
+                    if (isStringEquals(part, "-ctf") || isStringEquals(part, "--createFile"))
+                    {
+                        //Проверка на обязательный атрибут: имя файла (он всегда в txt)
+                        string name = executedComand[1];
+                        if (executedComand.Count == 3)
+                        {
+                            string path = main_path + executedComand[2];
+                            if (isPath(executedComand[2]))
+                            {
+                                CreateFile(name, path);
+                                txtBlockConsole.Text += "File " + name + " on path "+path+ " - created";
+                            }
+                            else
+                            {
+                                txtBlockConsole.Text += "Error path: "+path;
+                            }
+                        }else if (executedComand.Count == 2)
+                        {
+                            CreateFile(name, selectedDirectory.FullName);
+                            txtBlockConsole.Text += "File " + name + " on path " + selectedDirectory.FullName + " - created";
+                            
+                        }
+                        txtBlockConsole.Text += splitter;
+                        break;
+
+                    }
+                    else if (isStringEquals(part, "-ctd") || isStringEquals(part, "--createDirectory"))
+                    {
+                        string name = executedComand[1];
+                        if (executedComand.Count == 3)
+                        {
+                            string path = main_path + executedComand[2];
+                            if (isPath(executedComand[2]))
+                            {
+                                CreateDirectory(path, name);
+                                txtBlockConsole.Text += "Directory " + name + " on path "+path +" - created";
+                            }
+                            else
+                            {
+                                txtBlockConsole.Text += "Error path: " + path;
+                            }
+                        }
+                        else if (executedComand.Count == 2)
+                        {
+                            CreateDirectory(selectedDirectory.FullName, name);
+                            txtBlockConsole.Text += "Directory " + name + " - created";
+                        }
+                        txtBlockConsole.Text += splitter;
+                        break;
+
+                    }
+                    else if (isStringEquals(part, "-deD") || isStringEquals(part, "--deleteDirectory"))
+                    {
+                        string path = main_path + executedComand[1];
+                        if (isPath(executedComand[1]))
+                        {
+                            DeleteFile(Properties.Resources.TYPE_DIRECTORY, path);
+                            txtBlockConsole.Text += "Directory " + path + " - deleted";
+                        }
+                        else
+                        {
+                            txtBlockConsole.Text += "Unexpected path: "+path;
+                        }
+                        txtBlockConsole.Text += splitter;
+                        break;
+                    }
+                    else if (isStringEquals(part, "-deF") || isStringEquals(part, "--deleteFile"))
+                    {
+                        string path = main_path + executedComand[1];
+                        //if (isPath(executedComand[1]))
+                        //{
+                        DeleteFile(Properties.Resources.TYPE_FILE, path);
+                        txtBlockConsole.Text += "File " + path + " - deleted";
+                        //}
+                        //else
+                        //{
+                        //    txtBlockConsole.Text += "Unexpected path: " + path;
+                        //}
+                        txtBlockConsole.Text += splitter;
+                        break;
+                    }
+                    else if (isStringEquals(part, "-ln") || isStringEquals(part, "--launch"))
+                    {
+                        string nameProcess = executedComand[1];
+                        LaunchProcess("", nameProcess);
+                        txtBlockConsole.Text += splitter;
+                        break;
+                    }
+                    else if (isStringEquals(part, "--logs"))
+                    {
+                        //SaveLogs();
+                        string nameLogs = executedComand[1];
+                        SaveLogs(nameLogs, listActions,FileActions.All);
+                        txtBlockConsole.Text += "Logs "+nameLogs +" -created";
+                        txtBlockConsole.Text += splitter;
+                        break;
+                    }
+                    else
+                    {
+                        txtBlockConsole.Text += "Unexpected command: ";
+                        executedComand.ForEach((string k) => {
+                            txtBlockConsole.Text += k + " ";
+                        });
+                        txtBlockConsole.Text += splitter;
+                        break;
+                    }
+                }
+                else if (executedComand.Count == 1)
+                {
+                    if (isStringEquals(part, "--about"))
+                    {
+                        txtBlockConsole.Text += textAbout;
+                        txtBlockConsole.Text += splitter;
+                    }
+                    else if (isStringEquals(part, "--doc"))
+                    {
+                        txtBlockConsole.Text += FileManagerForOS.Properties.Resources.Reference;
+                        txtBlockConsole.Text += splitter;
+                    }
+                    else if (isStringEquals(part, "-h") || isStringEquals(part, "--help"))
+                    {
+                        txtBlockConsole.Text += helpToConsole;
+                        txtBlockConsole.Text += splitter;
+                    }
+                    else if (isStringEquals(part, "--exit"))
+                    {
+                        this.Close();
+                    }
+                    else if (isStringEquals(part, "--clear"))
+                    {
+                        txtBlockConsole.Text = "";
+                    }
+                    else
+                    {
+                        txtBlockConsole.Text += "Unexpected command: ";
+                        txtBlockConsole.Text += executedComand[i] + " ";
+                        txtBlockConsole.Text += splitter;
+                    }
+                }
+            }
+            refreshView();
+
+        }
+        private bool isPath(string path)
+        {
+            return Directory.Exists(main_path+path);
+        }
+
+
+        #endregion
     }
 
-    #endregion
 
 }

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Management;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace FileManagerForOS
 {
@@ -41,6 +43,47 @@ namespace FileManagerForOS
                 return a.Equals(b, StringComparison.CurrentCulture);
             }
             return false;
+        }
+
+        public static void SaveLogs(string nameLogs, List<object[]> listActions, FileActions fa)
+        {
+            string logFileName = nameLogs + ".txt";
+            string pathToSave = Environment.CurrentDirectory;
+            try
+            {
+                File.WriteAllText(pathToSave + "\\" + logFileName, getSelectedLogs(fa, listActions));
+                MessageBox.Show("Файл успешно создан!\nЕго расположение: " + Environment.CurrentDirectory);
+            }
+            catch (IOException w)
+            {
+                MessageBox.Show("Невозможно создать файл логов!\nОшибка:" + w.Message);
+            }
+        }
+
+        public static string getSelectedLogs(FileActions action, List<object[]> listActions)
+        {
+            if (action.Equals(FileActions.All))
+            {
+                StringBuilder stringBuilder = new StringBuilder();
+                foreach (object[] element in listActions)
+                {
+                    stringBuilder.AppendLine(element[1].ToString()).AppendLine(Properties.Resources.splitter);
+                }
+                return stringBuilder.ToString();
+            }
+            else
+            {
+                StringBuilder stringBuilder = new StringBuilder();
+                foreach (object[] element in listActions)
+                {
+                    if (action.Equals((FileActions)element[0]))
+                    {
+                        stringBuilder.AppendLine(element[1].ToString()).AppendLine(Properties.Resources.splitter);
+                    }
+                }
+                return stringBuilder.ToString();
+            }
+            return null;
         }
     }
 }
