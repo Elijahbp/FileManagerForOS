@@ -129,7 +129,6 @@ namespace FileManagerForOS
             return new StringBuilder().Append(main_path).Append(path).ToString();
         }
 
-
         private void OnCreateOrDelete(FileActions fileActions, string name, string destPath)
         {
             name += " ";
@@ -166,6 +165,138 @@ namespace FileManagerForOS
 
 
         #region логика работы с файлами/папками
+
+
+        //Основные методы по работе с файлами (за исключением copy,cut)
+        private void CreateDirectory(string destPath, string nameFolder)
+        {
+
+            Directory.CreateDirectory(destPath + "\\" + nameFolder);
+            OnCreateOrDelete(FileActions.Create, nameFolder, destPath);
+        }
+
+        private void CreateFile(string nameFile, string destPath)
+        {
+            destPath += "\\" + nameFile + ".txt";
+            File.Create(destPath).Close();
+            OnCreateOrDelete(FileActions.Create, nameFile, destPath);
+        }
+
+        private void OpenFile(string typeElement, string path)
+        {
+            if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
+            {
+                getViewByPath(path);
+            }
+            else if (isStringEquals(typeElement, Properties.Resources.TYPE_FILE))
+            {
+                ProcessStartInfo processStart = new ProcessStartInfo(path);
+                try
+                {
+                    Process.Start(processStart);
+                    OnOpened(path, new FileInfo(path).Name);
+                }
+                catch (FileNotFoundException)
+                {
+                    MessageBox.Show("ФАйл не найден!");
+                }
+                catch (InvalidOperationException)
+                {
+                    MessageBox.Show("Невозможно открыть файл!");
+                }
+            }
+        }
+
+        private bool DeleteFile(string typeElement, string path)
+        {
+            if (isStringEquals(typeElement, Properties.Resources.TYPE_FILE))
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    OnCreateOrDelete(FileActions.Delete, "", path);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+
+            }
+            else if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
+            {
+                if (Directory.Exists(path))
+                {
+                    if (isStringEquals(path, selectedDirectory.FullName))
+                    {
+                        selectedDirectory = selectedDirectory.Parent;
+                    }
+                    Directory.Delete(path, true);
+                    OnCreateOrDelete(FileActions.Delete, "", path);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        private bool LaunchProcess(string path, string nameProcess)
+        {
+            try
+            {
+                Process.Start(nameProcess);
+                OnOpened(path, nameProcess);
+                return true;
+            }
+            catch (Win32Exception e)
+            {
+                return false;
+            }
+        }
+
+        private static void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
+        {
+            // Get the subdirectories for the specified directory.
+            DirectoryInfo dir = new DirectoryInfo(sourceDirName);
+
+            if (!dir.Exists)
+            {
+                throw new DirectoryNotFoundException(
+                    "Source directory does not exist or could not be found: "
+                    + sourceDirName);
+            }
+
+            DirectoryInfo[] dirs = dir.GetDirectories();
+            // If the destination directory doesn't exist, create it.
+            if (!Directory.Exists(destDirName))
+            {
+                Directory.CreateDirectory(destDirName);
+            }
+
+            // Get the files in the directory and copy them to the new location.
+            FileInfo[] files = dir.GetFiles();
+            foreach (FileInfo file in files)
+            {
+                string temppath = Path.Combine(destDirName, file.Name);
+                file.CopyTo(temppath, false);
+            }
+
+            // If copying subdirectories, copy them and their contents to new location.
+            if (copySubDirs)
+            {
+                foreach (DirectoryInfo subdir in dirs)
+                {
+                    string temppath = Path.Combine(destDirName, subdir.Name);
+                    DirectoryCopy(subdir.FullName, temppath, copySubDirs);
+                }
+            }
+        }
+
+
+        #endregion
 
         //Обновить отображение
         private void refreshView()
@@ -504,37 +635,45 @@ namespace FileManagerForOS
             string destFileName = selectedDirectory.FullName;
             FileInfo fileInfo = new FileInfo(bufPath);
             destFileName += "\\" + fileInfo.Name;
-            if (selectedAction == BaseStatics.FileActions.Copy)
+            if (!isStringEquals(bufPath, destFileName))
             {
-                if (File.Exists(bufPath))
-                {
-                    File.Copy(bufPath, destFileName, true);
-                    OnInsert(FileActions.Copy, bufPath, destFileName);
-                }
-
-            }
-            else if (selectedAction == BaseStatics.FileActions.Excision)
-            {
-                try
+                if (selectedAction == BaseStatics.FileActions.Copy)
                 {
                     if (File.Exists(bufPath))
                     {
-                        File.Move(bufPath, destFileName);
-                        OnInsert(FileActions.Excision, bufPath, destFileName);
+                        File.Copy(bufPath, destFileName, true);
+                        OnInsert(FileActions.Copy, bufPath, destFileName);
                     }
                     else if (Directory.Exists(bufPath))
                     {
-                        Directory.Move(bufPath, destFileName);
-                        OnInsert(FileActions.Excision, bufPath, destFileName);
+                        DirectoryCopy(bufPath, destFileName, true);
                     }
-                    insertMenuItem.IsEnabled = false;
-                }
-                catch (IOException exception)
-                {
-                    MessageBox.Show(exception.Message);
-                }
 
+                }
+                else if (selectedAction == BaseStatics.FileActions.Excision)
+                {
+                    try
+                    {
+                        if (File.Exists(bufPath))
+                        {
+                            File.Move(bufPath, destFileName);
+                            OnInsert(FileActions.Excision, bufPath, destFileName);
+                        }
+                        else if (Directory.Exists(bufPath))
+                        {
+                            Directory.Move(bufPath, destFileName);
+                            OnInsert(FileActions.Excision, bufPath, destFileName);
+                        }
+                        insertMenuItem.IsEnabled = false;
+                    }
+                    catch (IOException exception)
+                    {
+                        MessageBox.Show(exception.Message);
+                    }
+
+                }
             }
+            
             refreshView();
         }
 
@@ -656,6 +795,36 @@ namespace FileManagerForOS
             windowLogs.Owner = this;
             windowLogs.ShowDialog();
             refreshView();
+        }
+
+        private void MenuItem_Click_Launch_CMD(object sender, RoutedEventArgs e)
+        {
+            LaunchProcess("", "CMD.exe");
+        }
+
+        private void MenuItem_Click_Launch_PowerShell(object sender, RoutedEventArgs e)
+        {
+            LaunchProcess("", "PowerShell.exe");
+        }
+
+        private void MenuItem_Click_Launch_MonitorResources(object sender, RoutedEventArgs e)
+        {
+            LaunchProcess("", "perfmon.exe");
+        }
+
+        private void MenuItem_Click_Launch_Services(object sender, RoutedEventArgs e)
+        {
+            LaunchProcess("", "services.msc");
+        }
+
+        private void MenuItem_Click_Launch_Note(object sender, RoutedEventArgs e)
+        {
+            LaunchProcess("", "notepad.exe");
+        }
+
+        private void MenuItem_Click_Exit(object sender, RoutedEventArgs e)
+        {
+            this.Close();
         }
 
         //Предварительный выбор файла (используется только для элементов TreeViewItem)
@@ -793,126 +962,6 @@ namespace FileManagerForOS
             Console.WriteLine("Ok");
         }
 
-        private void MenuItem_Click_Launch_CMD(object sender, RoutedEventArgs e)
-        {
-            LaunchProcess("", "CMD.exe");
-        }
-
-        private void MenuItem_Click_Launch_PowerShell(object sender, RoutedEventArgs e)
-        {
-            LaunchProcess("", "PowerShell.exe");
-        }
-
-        private void MenuItem_Click_Launch_MonitorResources(object sender, RoutedEventArgs e)
-        {
-            LaunchProcess("", "perfmon.exe");
-        }
-
-        private void MenuItem_Click_Launch_Services(object sender, RoutedEventArgs e)
-        {
-            LaunchProcess("", "services.msc");
-        }
-
-        private void MenuItem_Click_Launch_Note(object sender, RoutedEventArgs e)
-        {
-            LaunchProcess("", "notepad.exe");
-        }
-
-        private void MenuItem_Click_Exit(object sender, RoutedEventArgs e)
-        {
-            this.Close();
-        }
-        #endregion
-
-
-        //Основные методы по работе с файлами (за исключением copy,cut)
-        private void CreateDirectory(string destPath, string nameFolder)
-        {
-            
-            Directory.CreateDirectory(destPath + "\\" + nameFolder);
-            OnCreateOrDelete(FileActions.Create, nameFolder, destPath);
-        }
-
-        private void CreateFile(string nameFile, string destPath)
-        {
-            destPath += "\\" + nameFile + ".txt";
-            File.Create(destPath).Close();
-            OnCreateOrDelete(FileActions.Create, nameFile, destPath);
-        }
-
-        private void OpenFile(string typeElement, string path)
-        {
-            if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
-            {
-                getViewByPath(path);
-            }
-            else if (isStringEquals(typeElement, Properties.Resources.TYPE_FILE))
-            {
-                ProcessStartInfo processStart = new ProcessStartInfo(path);
-                try
-                {
-                    Process.Start(processStart);
-                    OnOpened(path, new FileInfo(path).Name);
-                }
-                catch (FileNotFoundException)
-                {
-                    MessageBox.Show("ФАйл не найден!");
-                }
-                catch (InvalidOperationException)
-                {
-                    MessageBox.Show("Невозможно открыть файл!");
-                }
-            }
-        }
-
-        private bool DeleteFile(string typeElement, string path)
-        {
-            if (isStringEquals(typeElement, Properties.Resources.TYPE_FILE))
-            {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                    OnCreateOrDelete(FileActions.Delete, "", path);
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-                
-            }
-            else if (isStringEquals(typeElement, Properties.Resources.TYPE_DIRECTORY))
-            {
-                if (Directory.Exists(path)){
-                    if (isStringEquals(path, selectedDirectory.FullName))
-                    {
-                        selectedDirectory = selectedDirectory.Parent;
-                    }
-                    Directory.Delete(path, true);
-                    OnCreateOrDelete(FileActions.Delete, "", path);
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            return false;
-        }
-
-        private bool LaunchProcess(string path, string nameProcess)
-        {
-            try
-            {
-                Process.Start(nameProcess);
-                OnOpened(path, nameProcess);
-                return true;
-            }
-            catch (Win32Exception e)
-            {
-                return false;
-            }
-        }
 
 
 
@@ -1114,15 +1163,8 @@ namespace FileManagerForOS
         {
             return Directory.Exists(main_path+path);
         }
-
-
         #endregion
 
-        private void MenuItem_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
     }
-
 
 }
