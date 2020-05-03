@@ -26,6 +26,7 @@ namespace FileManagerForOS
 
         public EditionWindow(string type, bool rename)
         {
+            this.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             InitializeComponent();
             NameFile = "";
             if (!rename)
@@ -59,23 +60,43 @@ namespace FileManagerForOS
 
         private void ButtonCancel_Click(object sender, RoutedEventArgs e)
         {
-            txtBoxNameFile.Text = "";
-            this.Close();
+            Cancel();
         }
 
         private void ButtonOk_Click(object sender, RoutedEventArgs e)
         {
-            if (BaseStatics.isStringEquals(txtBoxNameFile.Text,""))
+            Ok();
+        }
+
+        private void txtBoxNameFile_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                Ok();
+            }
+            if (e.Key == Key.Escape)
+            {
+                Cancel();
+            }
+        }
+
+        private void Ok()
+        {
+            if (BaseStatics.isStringEquals(txtBoxNameFile.Text, ""))
             {
                 MessageBox.Show("Введите имя!");
-                
+
             }
             else
             {
                 NameFile = txtBoxNameFile.Text;
                 this.Close();
             }
-            
+        }
+        private void Cancel()
+        {
+            txtBoxNameFile.Text = "";
+            this.Close();
         }
     }
 }

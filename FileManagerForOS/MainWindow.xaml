@@ -8,8 +8,8 @@
         Title="MainWindow"  Height="157" Width="644" MinHeight="600" MinWidth="860"
         KeyDown="Window_KeyDown" Closing="Window_Closing">
 
-    <TabControl Grid.Column="1" Margin="0,0,0,0">
-        <TabItem Header="Файловый менеджер">
+    <TabControl Grid.Column="1" Margin="0,0,0,0" >
+        <TabItem Header="Файловый менеджер" >
             <Grid Margin="0,0,0,0">
 
                 <Grid.ColumnDefinitions>
@@ -21,6 +21,7 @@
                     <MenuItem Header="Файл" Height="25">
                         <MenuItem Header="Создать новый файл" Click="MenuItem_Click_CreateNewFile"/>
                         <MenuItem Header="Создать новую папку" Click="MenuItem_Click_CreateNewFolder"/>
+                        <MenuItem Header="Выход" Click="MenuItem_Click_Exit"/>
                     </MenuItem>
                     <MenuItem Header="Логи" Click="MenuItem_Click_OpenWindowLogs"/>
                     <MenuItem Header="Утилиты">
@@ -90,8 +91,8 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
-                <ScrollViewer Margin="5,0,5,35" >
-                    <TextBlock ScrollViewer.CanContentScroll="True" Background="LightGray" x:Name="txtBlockConsole" TextWrapping="Wrap" Height="496"/>
+                <ScrollViewer Margin="5,0,5,35">
+                    <TextBlock Background="LightGray"  x:Name="txtBlockConsole"/>
                 </ScrollViewer>
                 <TextBox x:Name="txtBoxConsoleLine" TextWrapping="Wrap" ScrollViewer.CanContentScroll="True" ScrollViewer.VerticalScrollBarVisibility="Auto" KeyDown="txtBoxConsole_KeyDown" Margin="5,0,5,5" Height="20" VerticalAlignment="Bottom" />
             </Grid>

@@ -125,7 +125,6 @@ namespace FileManagerForOS
                 this.processInfo = Process.GetCurrentProcess();
                 this.Dispatcher.Invoke(new Action(() =>
                 {
-                    
                     usingRAM = ConvertBytesToMegabytes(processInfo.VirtualMemorySize64);
                     maxRAM = ConvertBytesToMegabytes(processInfo.PeakVirtualMemorySize64);
                     percentUsingRam = Math.Round(usingRAM/totalRAM * 100,2);

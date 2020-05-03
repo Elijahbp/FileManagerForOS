@@ -28,23 +28,12 @@ namespace FileManagerForOS
          *
          * По заданию из оставшегося:
          * 4) Доделать систему подгрузки новых сборок
-         * 5) Прикрутить систему проверки овления, и её непосредственной реализации (Консоль и т.д.). - Доделать
          */
         public MainWindow()
         {
             InitializeComponent();
-            //WindowUpdate windowUpdate = new WindowUpdate();
-            //windowUpdate.Show();
-            //if (windowUpdate.IsInitialize)
-            //{
             baseInit();
-            //}
-            //else
-            //{
-            //    this.Close();
-            //}
         }
-
         private const int MODE_STANDART_HIDE = 0;
         private const int MODE_SHOW_ALL = 1;
 
@@ -75,17 +64,25 @@ namespace FileManagerForOS
         private string splitter = "\n"+new string('-',50) + "\n";
         private const string forHelp = "for help use -h or --help";
         private const string helpToConsole = "Команды исполнения:\n" +
-            "\tCreate File: -ctf (--createFile) name (path)\n" +
-            "\tCreate Directory: -ctd (--createDirectory) name (path)\n" +
-            "\tDelete file: -deF (--deleteFile) path_to_file\n" +
-            "\tDelete directory: -deD (--deleteDirectory) path_to_directory\n" +
-            "\tLaunch: -ln (--launch) name \n" +
+            "\tSelect Directory: -sl (или --select) path_to_directory \n" +
+            "\tCreate File: -ctf (или --createFile) name (path_to_file)\n" +
+            "\tCreate Directory: -ctd (или --createDirectory) name (path_to_directory)\n" +
+            "\tDelete file: -deF (или --deleteFile) path_to_file\n" +
+            "\tDelete directory: -deD (или --deleteDirectory) path_to_directory\n" +
+            "\tLaunch: -ln (или --launch) name \n" +
             "\tLogs: --logs name_output_file\n" +
             "\tAbout: --about\n" +
             "\tDocumentation: --doc\n" +
             "\tClear: --clear\n" +
-            "\tHelp: -h (--help)\n" +
-            "\tExit: --exit";
+            "\tHelp: -h (или --help)\n" +
+            "\tExit: --exit\n" +
+            "ВАЖНЫЕ ЗАМЕЧАНИЯ!!!:\n" +
+            "\t1) Командная строка исполняет только одну команду!\n" +
+            "\t2) Если используется команда, где указание пути не обязательно, по умолчанию используется выбранный путь\n" +
+            "\t3) Форма написания пути \\1\\2\\3\n" +
+            "\t4) При указании пути необходимо перед именем использовать прямой слеш \\. Пример: --createFile newFile \\MyDocuments\n" +
+            "\t5) Не содзавать директории с пробелом в названии!\n" +
+            "\t6) Параментры указанные в скобках являются не обязательными. Пример: -ctf name (path) - параметр пути является не обязательным\n";
 
 
         private void baseInit()
@@ -333,7 +330,7 @@ namespace FileManagerForOS
             return shortcut;
         }
 
-
+        
         private List<TreeViewItem> generateTreeView(DirectoryInfo df)
         {
             if (df.GetDirectories().Length == 0)
@@ -584,7 +581,7 @@ namespace FileManagerForOS
             EditionWindow creationWindow = new EditionWindow(Properties.Resources.TYPE_FILE, false);
             creationWindow.Owner = this;
             creationWindow.ShowDialog();
-            string nameFile = creationWindow.txtBoxNameFile.Text;
+            string nameFile = creationWindow.NameFile;
             if (nameFile.Length != 0)
             {
                 string destPath = selectedDirectory.FullName;
@@ -609,7 +606,7 @@ namespace FileManagerForOS
             EditionWindow creationWindow = new EditionWindow(Properties.Resources.TYPE_DIRECTORY, false);
             creationWindow.Owner = this;
             creationWindow.ShowDialog();
-            string nameFolder = creationWindow.txtBoxNameFile.Text;
+            string nameFolder = creationWindow.NameFile;
             if (nameFolder.Length != 0)
             {
                 string dest = selectedDirectory.FullName;
@@ -821,6 +818,10 @@ namespace FileManagerForOS
             LaunchProcess("", "notepad.exe");
         }
 
+        private void MenuItem_Click_Exit(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
         #endregion
 
 
@@ -899,10 +900,18 @@ namespace FileManagerForOS
             return false;
         }
 
-        private void LaunchProcess(string path, string nameProcess)
+        private bool LaunchProcess(string path, string nameProcess)
         {
-            Process.Start(nameProcess);
-            OnOpened(path, nameProcess);
+            try
+            {
+                Process.Start(nameProcess);
+                OnOpened(path, nameProcess);
+                return true;
+            }
+            catch (Win32Exception e)
+            {
+                return false;
+            }
         }
 
 
@@ -945,7 +954,22 @@ namespace FileManagerForOS
                 part = executedComand[i];
                 if  (executedComand.Count > 1 && executedComand.Count <=3)
                 {
-                    if (isStringEquals(part, "-ctf") || isStringEquals(part, "--createFile"))
+                    if (isStringEquals(part, "-sl") || isStringEquals(part, "--select"))
+                    {
+
+                        string path = main_path + executedComand[1];
+                        if (isPath(executedComand[1]))
+                        {
+                            this.selectedDirectory = new DirectoryInfo(path);
+                            txtBlockConsole.Text += "Directory " + path + " - selected";
+                            
+                        }
+                        else
+                        {
+                            txtBlockConsole.Text += "Error path: " + path;
+                        }
+                    }
+                    else if (isStringEquals(part, "-ctf") || isStringEquals(part, "--createFile"))
                     {
                         //Проверка на обязательный атрибут: имя файла (он всегда в txt)
                         string name = executedComand[1];
@@ -967,8 +991,6 @@ namespace FileManagerForOS
                             txtBlockConsole.Text += "File " + name + " on path " + selectedDirectory.FullName + " - created";
                             
                         }
-                        txtBlockConsole.Text += splitter;
-                        break;
 
                     }
                     else if (isStringEquals(part, "-ctd") || isStringEquals(part, "--createDirectory"))
@@ -992,8 +1014,6 @@ namespace FileManagerForOS
                             CreateDirectory(selectedDirectory.FullName, name);
                             txtBlockConsole.Text += "Directory " + name + " - created";
                         }
-                        txtBlockConsole.Text += splitter;
-                        break;
 
                     }
                     else if (isStringEquals(part, "-deD") || isStringEquals(part, "--deleteDirectory"))
@@ -1011,14 +1031,10 @@ namespace FileManagerForOS
                         {
                             txtBlockConsole.Text += "Unexpected path: "+path+". "+forHelp;
                         }
-                        txtBlockConsole.Text += splitter;
-                        break;
                     }
                     else if (isStringEquals(part, "-deF") || isStringEquals(part, "--deleteFile"))
                     {
                         string path = main_path + executedComand[1];
-                        //if (isPath(executedComand[1]))
-                        //{
                         if (DeleteFile(Properties.Resources.TYPE_FILE, path))
                         {
 
@@ -1028,20 +1044,18 @@ namespace FileManagerForOS
                         {
                             txtBlockConsole.Text += "Unexpected file on path: " + path + ". " + forHelp;
                         }
-                        //}
-                        //else
-                        //{
-                        //    txtBlockConsole.Text += "Unexpected path: " + path;
-                        //}
-                        txtBlockConsole.Text += splitter;
-                        break;
                     }
                     else if (isStringEquals(part, "-ln") || isStringEquals(part, "--launch"))
                     {
                         string nameProcess = executedComand[1];
-                        LaunchProcess("", nameProcess);
-                        txtBlockConsole.Text += splitter;
-                        break;
+                        if (LaunchProcess("", nameProcess))
+                        {
+                            txtBlockConsole.Text += "Process: " + nameProcess + " - launched";
+                        }
+                        else
+                        {
+                            txtBlockConsole.Text += "Process: " + nameProcess + " - not started";
+                        }
                     }
                     else if (isStringEquals(part, "--logs"))
                     {
@@ -1049,8 +1063,6 @@ namespace FileManagerForOS
                         string nameLogs = executedComand[1];
                         SaveLogs(nameLogs, listActions,FileActions.All);
                         txtBlockConsole.Text += "Logs "+nameLogs +" -created";
-                        txtBlockConsole.Text += splitter;
-                        break;
                     }
                     else
                     {
@@ -1059,26 +1071,24 @@ namespace FileManagerForOS
                             txtBlockConsole.Text += k + " ";
                         });
                         txtBlockConsole.Text += ". " + forHelp;
-                        txtBlockConsole.Text += splitter;
-                        break;
                     }
+
+                    txtBlockConsole.Text += splitter;
+                    break;
                 }
                 else if (executedComand.Count == 1)
                 {
                     if (isStringEquals(part, "--about"))
                     {
                         txtBlockConsole.Text += textAbout;
-                        txtBlockConsole.Text += splitter;
                     }
                     else if (isStringEquals(part, "--doc"))
                     {
                         txtBlockConsole.Text += FileManagerForOS.Properties.Resources.Reference;
-                        txtBlockConsole.Text += splitter;
                     }
                     else if (isStringEquals(part, "-h") || isStringEquals(part, "--help"))
                     {
                         txtBlockConsole.Text += helpToConsole;
-                        txtBlockConsole.Text += splitter;
                     }
                     else if (isStringEquals(part, "--exit"))
                     {
@@ -1087,13 +1097,15 @@ namespace FileManagerForOS
                     else if (isStringEquals(part, "--clear"))
                     {
                         txtBlockConsole.Text = "";
+                        break;
                     }
                     else
                     {
                         txtBlockConsole.Text += "Unexpected command: "+ executedComand[i] + ". "+ forHelp;
-                        txtBlockConsole.Text += splitter;
                     }
+                    txtBlockConsole.Text += splitter;
                 }
+            
             }
             refreshView();
 
@@ -1105,6 +1117,11 @@ namespace FileManagerForOS
 
 
         #endregion
+
+        private void MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 
 
