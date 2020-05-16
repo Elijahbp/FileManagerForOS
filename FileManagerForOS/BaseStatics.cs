@@ -11,7 +11,10 @@ namespace FileManagerForOS
 {
     public static class BaseStatics
     {
-        public enum FileActions :int
+        private static List<string> listProhibitedNames = new List<string>(new string[] { "CON", "AUX", "COM1", "COM2", "COM3", "COM4", "LPT1", "LPT2", "LPT3", "PRN", "NUL" });
+
+
+        public enum FileActions : int
         {
             All = 0, //Пока используется для сортировки логов
             Create = 1,
@@ -21,6 +24,17 @@ namespace FileManagerForOS
             Rename = 5,
             Open = 6,
             //Insert = 7,
+        }
+
+        public static bool isProhibitedName(string name){
+            bool l = false;
+            listProhibitedNames.ForEach(delegate (String prohibitedName){ 
+                if (prohibitedName.Equals(name.ToUpper()))
+                {
+                     l = true;
+                }
+            });
+            return l;
         }
 
         public static int getRAM()

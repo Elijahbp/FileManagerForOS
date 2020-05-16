@@ -27,7 +27,8 @@ namespace FileManagerForOS
          *
          *
          * По заданию из оставшегося:
-         * 4) Доделать систему подгрузки новых сборок
+         * 2) Скрыть исходный exe файла
+         * 
          */
         public MainWindow()
         {
@@ -42,6 +43,7 @@ namespace FileManagerForOS
         private const int SORT_DATE = 101;
         private const int SORT_WEIGHT = 102;
 
+        
         private static Brush unselectedIconStyleFile = new LinearGradientBrush(Colors.White, Colors.CadetBlue, 45);
         private static Brush unselectedIconStyleFolder = new LinearGradientBrush(Colors.White, Colors.DarkGray, 45);
         private static Brush selectedIconStyle = new LinearGradientBrush(Colors.White, Colors.LightGray, 45);
@@ -60,7 +62,7 @@ namespace FileManagerForOS
         string bufPath; //Используется для временного хранения пути файла (для дальнейшего удаления/копирования/перемещения) 
 
         private string textAbout ;
-
+        private string pathApllication =Environment.CurrentDirectory + "\\" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + ".exe";
         private string splitter = "\n"+new string('-',50) + "\n";
         private const string forHelp = "for help use -h or --help";
         private const string helpToConsole = "Команды исполнения:\n" +
@@ -93,6 +95,7 @@ namespace FileManagerForOS
             listActions = new List<object[]>();
             totalRAM = BaseStatics.getRAM();
             txtBoxPath.Text = convertPathForView(main_path);
+            //File.SetAttributes(Environment.CurrentDirectory + "\\"+System.Reflection.Assembly.GetExecutingAssembly().GetName().Name+".exe", FileAttributes.Hidden);
             Directory.CreateDirectory(main_path + "\\System");
             File.SetAttributes(main_path + "\\System", FileAttributes.Hidden);
             Directory.CreateDirectory(main_path + "\\MyDocuments");
@@ -111,6 +114,7 @@ namespace FileManagerForOS
 
         private void KillingBase()
         {
+            File.SetAttributes(Environment.CurrentDirectory + "\\" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + ".exe", FileAttributes.Normal);
             Directory.Delete(main_path + "\\System", true);
             if(Directory.Exists(main_path + "\\MyDocuments"))
             {
@@ -168,18 +172,51 @@ namespace FileManagerForOS
 
 
         //Основные методы по работе с файлами (за исключением copy,cut)
-        private void CreateDirectory(string destPath, string nameFolder)
+        private bool CreateDirectory(string destPath, string nameFolder)
         {
-
-            Directory.CreateDirectory(destPath + "\\" + nameFolder);
-            OnCreateOrDelete(FileActions.Create, nameFolder, destPath);
+            
+            if (!isProhibitedName(nameFolder))
+            {
+                try {
+                    Directory.CreateDirectory(destPath + "\\" + nameFolder);
+                    OnCreateOrDelete(FileActions.Create, nameFolder, destPath);
+                    return true;
+                }
+                catch(Exception e)
+                {
+                    MessageBox.Show(e.Message);
+                    return false;
+                }
+                
+            }
+            else
+            {
+                MessageBox.Show(nameFolder +" - запрещённое имя для папки.");
+                return false;
+            }
+            
         }
 
-        private void CreateFile(string nameFile, string destPath)
+        private bool CreateFile(string nameFile, string destPath)
         {
-            destPath += "\\" + nameFile + ".txt";
-            File.Create(destPath).Close();
-            OnCreateOrDelete(FileActions.Create, nameFile, destPath);
+            if (!isProhibitedName(nameFile))
+            {
+                 try{ destPath += "\\" + nameFile + ".txt";
+                    File.Create(destPath).Close();
+                    OnCreateOrDelete(FileActions.Create, nameFile, destPath);
+                    return true;
+                }
+                    catch (Exception e)
+                {
+                    MessageBox.Show(e.Message);
+                    return false;
+                }
+        }
+            else
+            {
+                MessageBox.Show(nameFile + " - запрещённое имя для файла.");
+                return false;
+            }
         }
 
         private void OpenFile(string typeElement, string path)
@@ -322,6 +359,18 @@ namespace FileManagerForOS
             selectedDirectory = new DirectoryInfo(path);
             txtBoxPath.Text = convertPathForView(path);
             List<FileInfo> filesInfo = new List<FileInfo>(selectedDirectory.GetFiles());
+            List<FileInfo> fileOnRemove = new List<FileInfo>();
+            filesInfo.ForEach(delegate(FileInfo info) {
+                if (info.FullName.Equals(pathApllication))
+                {
+                    fileOnRemove.Add(info);
+                }
+            });
+            fileOnRemove.ForEach(delegate (FileInfo info) {
+                filesInfo.Remove(info);
+                
+            });
+
             List<DirectoryInfo> directoryInfos = new List<DirectoryInfo>(selectedDirectory.GetDirectories());
             if (typeSort == 0)
             {
@@ -939,8 +988,15 @@ namespace FileManagerForOS
         {
             if (e.Key == Key.Enter)
             {
-                getViewByPath(reverseConvertPath(txtBoxPath.Text));
-                txtBoxPath.IsReadOnly = true;
+                if (isPath(txtBoxPath.Text))
+                {
+
+                    getViewByPath(reverseConvertPath(txtBoxPath.Text));
+                }
+                else
+                {
+                    txtBoxPath.Text = convertPathForView(selectedDirectory.FullName);
+                }
             }
         }
 
@@ -957,8 +1013,6 @@ namespace FileManagerForOS
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             KillingBase();
-            //new WindowUpdate().ShowDialog();
-            //TODO: Проверка на обновления
             Console.WriteLine("Ok");
         }
 
@@ -977,8 +1031,6 @@ namespace FileManagerForOS
                 txtBoxConsoleLine.Text = "";
             }
         }
-
-
 
         private List<string> parse(string command)
         {
@@ -1027,8 +1079,14 @@ namespace FileManagerForOS
                             string path = main_path + executedComand[2];
                             if (isPath(executedComand[2]))
                             {
-                                CreateFile(name, path);
-                                txtBlockConsole.Text += "File " + name + " on path "+path+ " - created";
+                                if (CreateFile(name, path))
+                                {
+                                    txtBlockConsole.Text += "File " + name + " on path " + path + " - created";
+                                }
+                                else
+                                {
+                                    txtBlockConsole.Text += "File " + name + " on path " + path + " - is not created";
+                                }
                             }
                             else
                             {
@@ -1036,9 +1094,15 @@ namespace FileManagerForOS
                             }
                         }else if (executedComand.Count == 2)
                         {
-                            CreateFile(name, selectedDirectory.FullName);
-                            txtBlockConsole.Text += "File " + name + " on path " + selectedDirectory.FullName + " - created";
-                            
+                            if (CreateFile(name, selectedDirectory.FullName))
+                            {
+                                txtBlockConsole.Text += "File " + name + " on path " + selectedDirectory.FullName + " - created";
+                            }
+                            else
+                            {
+                                txtBlockConsole.Text += "File " + name + " on path " + selectedDirectory.FullName + " - is not created";
+                            }
+
                         }
 
                     }
@@ -1050,8 +1114,14 @@ namespace FileManagerForOS
                             string path = main_path + executedComand[2];
                             if (isPath(executedComand[2]))
                             {
-                                CreateDirectory(path, name);
-                                txtBlockConsole.Text += "Directory " + name + " on path "+path +" - created";
+                                if (CreateDirectory(path, name))
+                                {
+                                    txtBlockConsole.Text += "Directory " + name + " on path " + path + " - created";
+                                }
+                                else
+                                {
+                                    txtBlockConsole.Text += "Directory " + name + " on path " + path + " - is not created";
+                                }
                             }
                             else
                             {
@@ -1060,8 +1130,14 @@ namespace FileManagerForOS
                         }
                         else if (executedComand.Count == 2)
                         {
-                            CreateDirectory(selectedDirectory.FullName, name);
-                            txtBlockConsole.Text += "Directory " + name + " - created";
+                            if (CreateDirectory(selectedDirectory.FullName, name))
+                            {
+                                txtBlockConsole.Text += "Directory " + name + " - created";
+                            }
+                            else
+                            {
+                                txtBlockConsole.Text += "Directory " + name + " - is not created";
+                            }
                         }
 
                     }
@@ -1159,9 +1235,18 @@ namespace FileManagerForOS
             refreshView();
 
         }
+        
         private bool isPath(string path)
         {
-            return Directory.Exists(main_path+path);
+            if (Directory.Exists(main_path +path))
+            {
+                return true;
+            }
+            else
+            {
+                MessageBox.Show("Path: " + path + " - is not correct!");
+                return false;
+            }
         }
         #endregion
 
